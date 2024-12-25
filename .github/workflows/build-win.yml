@@ -32,7 +32,7 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: zwl-recover-setup.exe
+        name: zcash-vote-app-setup.exe
         path: src-tauri/target/release/bundle/nsis/*-setup.exe
     - name: Create Release
       if: startsWith(github.ref_name, 'v')
