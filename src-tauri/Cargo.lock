@@ -6613,13 +6613,21 @@ dependencies = [
 name = "zcash-vote-app"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "orchard",
+ "prost",
+ "r2d2",
+ "r2d2_sqlite",
+ "rusqlite",
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
  "tauri-plugin-opener",
+ "tokio",
+ "tokio-util",
+ "tonic",
  "zcash-vote",
 ]
 

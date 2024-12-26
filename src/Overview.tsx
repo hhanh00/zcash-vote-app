@@ -1,5 +1,5 @@
-import { invoke } from "@tauri-apps/api/core";
-import { Accordion, Alert, Card, List, Table } from "flowbite-react"
+import { Channel, invoke } from "@tauri-apps/api/core";
+import { Accordion, Alert, Button, Card, List, Progress, Table } from "flowbite-react"
 import { useEffect, useState } from "react";
 
 type Answer = {
@@ -10,6 +10,7 @@ type Answer = {
 export function Overview() {
     const [election, setElection] = useState<any>()
     const [votes, setVotes] = useState<Answer[] | undefined>()
+    const [height, setHeight] = useState<number | undefined>()
 
     useEffect(() => {
         (async () => {
@@ -26,7 +27,20 @@ export function Overview() {
         })()
     }, [])
 
+    const download = () => {
+        const channel = new Channel<number>();
+        channel.onmessage = (h) => {
+            console.log(`height: ${h}`);
+            setHeight(h);
+        };
+        invoke('download_reference_data', {channel: channel});
+    }
+
     if (!votes) return <div/>
+
+    const progressPct: number | undefined = height && election && (
+        100 * (height - election.start_height) / (election.end_height - election.start_height)
+    );
 
     return <>
         <nav className="flex items-center justify-between px-8 py-2 bg-gray-800 text-white">
@@ -83,6 +97,8 @@ export function Overview() {
                         </Accordion.Content>
                     </Accordion.Panel>
                 </Accordion>
+                <Button onClick={download}>Download</Button>
+                {progressPct && <Progress progress={progressPct}></Progress>}
             </Card>
         </div>
 

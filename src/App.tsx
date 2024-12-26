@@ -60,8 +60,10 @@ function Election() {
         ]
       })
       console.log(dbFilename)
-      if (dbFilename != null)
+      if (dbFilename != null) {
+        invoke('set_db', {path: dbFilename})
         navigate('/overview')
+      }
     })()
   }
 
