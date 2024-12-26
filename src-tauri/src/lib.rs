@@ -17,7 +17,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             state::set_election,
             state::get_election,
-            state::set_db,
+            state::save_db,
+            state::open_db,
             download::download_reference_data,
         ])
         .run(tauri::generate_context!())
