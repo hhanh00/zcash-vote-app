@@ -1,5 +1,6 @@
 use anyhow::Result;
-use rusqlite::Connection;
+use rusqlite::{params, Connection};
+use zcash_vote::Election;
 
 pub fn create_schema(connection: &Connection) -> Result<()> {
     connection.execute(
@@ -33,4 +34,25 @@ pub fn create_schema(connection: &Connection) -> Result<()> {
     )?;
 
     Ok(())
+}
+
+pub fn store_election(connection: &Connection, url: &str, election: &Election) -> Result<()> {
+    connection.execute(
+        "INSERT INTO properties(name, value) VALUES (?1, ?2)",
+        params!["url", url])?;
+    connection.execute(
+        "INSERT INTO properties(name, value) VALUES (?1, ?2)",
+        params!["election", serde_json::to_string(election).unwrap()])?;
+    Ok(())
+}
+
+pub fn load_election(connection: &Connection) -> Result<(String, Election)> {
+    let url = connection.query_row(
+        "SELECT value FROM properties WHERE name = ?1", ["url"],
+    |r| r.get::<_, String>(0))?;
+    let election = connection.query_row(
+        "SELECT value FROM properties WHERE name = ?1", ["election"],
+    |r| r.get::<_, String>(0))?;
+    let election: Election = serde_json::from_str(&election)?;
+    Ok((url, election))
 }

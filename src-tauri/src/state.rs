@@ -7,9 +7,10 @@ use rusqlite::Connection;
 use tauri::State;
 use zcash_vote::Election;
 
-use crate::db::create_schema;
+use crate::db::{create_schema, load_election, store_election};
 
 pub struct AppState {
+    pub url: String,
     pub election: Election,
     pub pool: r2d2::Pool<SqliteConnectionManager>,
 }
@@ -17,6 +18,7 @@ pub struct AppState {
 impl Default for AppState {
     fn default() -> Self {
         Self {
+            url: Default::default(),
             election: Default::default(),
             pool: Pool::new(SqliteConnectionManager::memory()).unwrap(),
         }
@@ -24,7 +26,7 @@ impl Default for AppState {
 }
 
 #[tauri::command]
-pub fn set_db(path: String, state: State<Mutex<AppState>>) -> Result<(), String> {
+pub fn save_db(path: String, state: State<Mutex<AppState>>) -> Result<(), String> {
     (|| {
         let mut s = state.lock().unwrap();
         {
@@ -34,14 +36,31 @@ pub fn set_db(path: String, state: State<Mutex<AppState>>) -> Result<(), String>
         }
         let manager = SqliteConnectionManager::file(&path);
         let pool = Pool::new(manager)?;
+        let connection = pool.get()?;
+        store_election(&connection, &s.url, &s.election)?;
         s.pool = pool;
         Ok::<_, Error>(())
     })().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn set_election(election: Election, state: State<Mutex<AppState>>) {
+pub fn open_db(path: String, state: State<Mutex<AppState>>) -> Result<(), String> {
+    (|| {
+        let mut s = state.lock().unwrap();
+        let pool = Pool::new(SqliteConnectionManager::file(path))?;
+        let connection = pool.get()?;
+        let (url, election) = load_election(&connection)?;
+        s.url = url;
+        s.election = election;
+        s.pool = pool;
+        Ok::<_, Error>(())
+    })().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn set_election(url: String, election: Election, state: State<Mutex<AppState>>) {
     let mut s = state.lock().unwrap();
+    s.url = url.clone();
     s.election = election;
 }
 
