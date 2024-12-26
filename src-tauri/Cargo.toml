@@ -26,6 +26,14 @@ tauri-plugin-dialog = "2"
 
 zcash-vote = {git = "https://github.com/hhanh00/zcash-vote.git", rev="fe9caa3"}
 orchard = "0.3.0"
+rusqlite = "0.29.0"
+r2d2 = "0.8.10"
+r2d2_sqlite = "0.22.0"
+anyhow = "1.0.95"
+tokio-util = "0.7.13"
+tokio = "1.42.0"
+tonic = "0.7.2"
+prost = "0.10.1"
 
 [patch.crates-io]
 orchard = {git = "https://github.com/hhanh00/orchard.git", rev="2186856"}
