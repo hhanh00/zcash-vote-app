@@ -7,7 +7,7 @@ import {
 } from 'react-router-dom'
 import "./App.css"
 import axios from 'axios'
-import { save } from '@tauri-apps/plugin-dialog'
+import { open, save } from '@tauri-apps/plugin-dialog'
 import { Overview } from './Overview'
 import { Button, Modal, TextInput } from 'flowbite-react'
 import { Controller, SubmitHandler, useForm } from 'react-hook-form'
@@ -45,7 +45,7 @@ function Election() {
     const election = rep.data
 
     console.log(election)
-    await invoke('set_election', {election: election})
+    await invoke('set_election', {url: data.url, election: election})
     const name = election.name;
 
     (async () => {
@@ -59,12 +59,19 @@ function Election() {
           }
         ]
       })
-      console.log(dbFilename)
       if (dbFilename != null) {
-        invoke('set_db', {path: dbFilename})
+        await invoke('save_db', {path: dbFilename})
         navigate('/overview')
       }
     })()
+  }
+
+  const openDb = async () => {
+    const dbFilename = await open();
+    if (dbFilename != null) {
+      await invoke('open_db', {path: dbFilename})
+      navigate('/overview')
+    }
   }
 
   return (
@@ -85,7 +92,7 @@ function Election() {
             New
           </Button>
           to start voting on a new election, or
-          <Button className="inline-flex mx-2">
+          <Button onClick={openDb} className="inline-flex mx-2">
             Open
           </Button>
           to continue with a previous election.
