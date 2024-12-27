@@ -35,18 +35,20 @@ export function Overview() {
             setHeight(height)
 
             const balance: number = await invoke('get_available_balance', {})
-            console.log(balance)
-            setBalance(balance)
+            setBalance(balance / 100000)
         })()
     }, [])
 
     const download = () => {
-        const channel = new Channel<number>();
-        channel.onmessage = (h) => {
-            console.log(`height: ${h}`);
-            setHeight(h);
-        };
-        invoke('download_reference_data', {channel: channel});
+        (async () => {
+            const channel = new Channel<number>();
+            channel.onmessage = (h) => {
+                setHeight(h);
+            };
+            await invoke('download_reference_data', {channel: channel});
+            const balance: number = await invoke('get_available_balance', {})
+            setBalance(balance / 100000)
+        })()
     }
 
     if (!votes) return <div/>
@@ -64,9 +66,9 @@ export function Overview() {
         </nav>
         <div className="flex items-center justify-center min-h-screen bg-gray-100">
             <Card className="max-w-md">
-                <h2 className="text-xl font-bold text-gray-800">NSM NU7</h2>
+                <h2 className="text-xl font-bold text-gray-800">{election.name}</h2>
                 <p className="text-gray-600">
-                    Do you support including the NSM in NU7?
+                    {election.question}
                 </p>
                 <Table>
                     <Table.Head>
@@ -105,7 +107,7 @@ export function Overview() {
                 </Accordion>
                 {typeof(height) !== "number" && <Button onClick={download}>Download</Button>}
                 {progressPct && <Progress progress={progressPct}></Progress>}
-                <div className="text-xs">{height}</div>
+                <div className="text-xs">Current height: {height}</div>
                 <div className="text-xl font-semibold text-red-600 dark:text-white">Available Voting Power: {balance ?? 'N/A - Download first'}</div>
                 <Alert color="warning" className="mt-4">
                     <span>

@@ -72,7 +72,7 @@ pub async fn download_reference_data(
             Ok(Err(err)) => eprintln!("Task returned an error: {}", err),
             Err(err) => eprintln!("Task panicked: {:?}", err),
         }
-    });
+    }).await.unwrap();
 
     Ok(())
 }
