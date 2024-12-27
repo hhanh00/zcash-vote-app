@@ -6,6 +6,7 @@ use state::AppState;
 pub mod rpc;
 pub mod state;
 pub mod db;
+pub mod validate;
 pub mod download;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -19,6 +20,7 @@ pub fn run() {
             state::get_election,
             state::save_db,
             state::open_db,
+            validate::validate_key,
             download::download_reference_data,
         ])
         .run(tauri::generate_context!())
