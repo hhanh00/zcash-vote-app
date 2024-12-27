@@ -7,6 +7,11 @@ type Answer = {
     amount: number;
 }
 
+type Candidate = {
+    address: string;
+    choice: string;
+}
+
 export function Overview() {
     const [election, setElection] = useState<any>()
     const [votes, setVotes] = useState<Answer[] | undefined>()
@@ -18,9 +23,9 @@ export function Overview() {
             const election: any = await invoke('get_election')
             console.log(election)
             setElection(election)
-            const votes: Answer[] = election.candidates.map((a: string) => {
+            const votes: Answer[] = election.candidates.map((a: Candidate) => {
                 return ({
-                    answer: a,
+                    answer: a.choice,
                     amount: 0,
                 })
             })
