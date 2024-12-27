@@ -19,6 +19,7 @@ pub mod state;
 pub mod db;
 pub mod validate;
 pub mod download;
+pub mod decrypt;
 pub mod vote;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
