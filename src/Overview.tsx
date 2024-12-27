@@ -10,7 +10,8 @@ type Answer = {
 export function Overview() {
     const [election, setElection] = useState<any>()
     const [votes, setVotes] = useState<Answer[] | undefined>()
-    const [height, setHeight] = useState<number | undefined>()
+    const [height, setHeight] = useState<number | null | undefined>()
+    const [balance, setBalance] = useState<number | undefined>()
 
     useEffect(() => {
         (async () => {
@@ -24,6 +25,13 @@ export function Overview() {
                 })
             })
             setVotes(votes)
+
+            const height: number | null = await invoke('get_sync_height', {})
+            setHeight(height)
+
+            const balance: number = await invoke('get_available_balance', {})
+            console.log(balance)
+            setBalance(balance)
         })()
     }, [])
 
@@ -69,13 +77,6 @@ export function Overview() {
                         ))}
                     </Table.Body>
                 </Table>
-                <Alert color="warning" className="mt-4">
-                    <span>
-                        <strong>Warning: </strong>
-                        Funds must be made available only after the registration period has started.
-                        These funds should not be spent until the registration period has ended.
-                        Voting begins immediately after the registration period.</span>
-                </Alert>
                 <Accordion>
                     <Accordion.Panel>
                         <Accordion.Title>View Voting Period</Accordion.Title>
@@ -97,8 +98,17 @@ export function Overview() {
                         </Accordion.Content>
                     </Accordion.Panel>
                 </Accordion>
-                <Button onClick={download}>Download</Button>
+                {typeof(height) !== "number" && <Button onClick={download}>Download</Button>}
                 {progressPct && <Progress progress={progressPct}></Progress>}
+                <div className="text-xs">{height}</div>
+                <div className="text-xl font-semibold text-red-600 dark:text-white">Available Voting Power: {balance ?? 'N/A - Download first'}</div>
+                <Alert color="warning" className="mt-4">
+                    <span>
+                        <strong>Warning: </strong>
+                        Funds must be made available only after the registration period has started.
+                        These funds should not be spent until the registration period has ended.
+                        Voting begins immediately after the registration period.</span>
+                </Alert>
             </Card>
         </div>
 
