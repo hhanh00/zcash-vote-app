@@ -34,6 +34,8 @@ tokio-util = "0.7.13"
 tokio = "1.42.0"
 tonic = "0.7.2"
 prost = "0.10.1"
+bip0039 = "0.9.0"
+zcash_address = "0.2.0"
 
 [patch.crates-io]
 orchard = {git = "https://github.com/hhanh00/orchard.git", rev="2186856"}
