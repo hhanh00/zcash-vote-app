@@ -5,7 +5,7 @@ use rusqlite::Connection;
 use tauri::{ipc::Channel, State};
 use tonic::Request;
 
-use crate::{rpc::{self, compact_tx_streamer_client::CompactTxStreamerClient, BlockId, CompactBlock}, state::AppState};
+use crate::{db::store_prop, rpc::{self, compact_tx_streamer_client::CompactTxStreamerClient, BlockId, CompactBlock}, state::AppState};
 
 #[tauri::command]
 pub async fn download_reference_data(state: State<'_, Mutex<AppState>>, channel: Channel<u32>) -> Result<(), ()> {
@@ -25,6 +25,7 @@ pub async fn download_reference_data(state: State<'_, Mutex<AppState>>, channel:
         while let Some(block) = blocks.message().await? {
             let height = block.height as u32;
             if height % 1000 == 0 || height == end as u32 {
+                store_prop(&connection, "height", &height.to_string())?;
                 channel.send(block.height as u32)?;
             }
             handle_block(&connection, block)?;
