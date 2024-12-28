@@ -94,6 +94,7 @@ fn handle_block(
                 let height = block.height;
                 let txid = &tx.hash;
                 let value = note.value().inner();
+                let div = note.recipient().diversifier();
                 let rseed = note.rseed().as_bytes();
                 let nf = note.nullifier(fvk).to_bytes();
                 let domain_nf = note
@@ -102,9 +103,9 @@ fn handle_block(
                 let rho = note.rho().to_bytes();
                 connection.execute(
                     "INSERT INTO notes
-                    (position, height, txid, value, rseed, nf, dnf, rho, spent)
-                    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, NULL)",
-                    params![p, height, txid, value, rseed, nf, domain_nf, rho],
+                    (position, height, txid, value, div, rseed, nf, dnf, rho, spent)
+                    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, NULL)",
+                    params![p, height, txid, value, div.as_array(), rseed, nf, domain_nf, rho],
                 )?;
 
                 println!("{:?}", note);
