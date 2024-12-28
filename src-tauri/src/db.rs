@@ -30,8 +30,7 @@ pub fn create_schema(connection: &Connection) -> Result<()> {
     connection.execute(
         "CREATE TABLE IF NOT EXISTS nullifiers(
         id_nf INTEGER PRIMARY KEY NOT NULL,
-        hash BLOB NOT NULL,
-        revhash BLOB NOT NULL)",
+        hash BLOB NOT NULL)",
         [],
     )?;
     connection.execute(
