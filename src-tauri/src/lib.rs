@@ -6,8 +6,8 @@ use state::AppState;
 macro_rules! tauri_export {
     ($state:ident, $connection:ident, $block:block) => {
         (|| {
-            let s = $state.lock().unwrap();
-            let $connection = s.pool.get()?;
+            let $state = $state.lock().unwrap();
+            let $connection = $state.pool.get()?;
             $block
         })().map_err(|e| e.to_string())
     };
@@ -41,4 +41,10 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+pub fn as_byte256(h: &[u8]) -> [u8; 32] {
+    let mut hh = [0u8; 32];
+    hh.copy_from_slice(h);
+    hh
 }

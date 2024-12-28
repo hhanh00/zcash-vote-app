@@ -1,7 +1,14 @@
 use anyhow::Result;
+use orchard::{
+    keys::{Diversifier, FullViewingKey, Scope},
+    note::{Nullifier, RandomSeed},
+    value::NoteValue,
+};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use zcash_vote::Election;
+
+use crate::as_byte256;
 
 pub fn create_schema(connection: &Connection) -> Result<()> {
     connection.execute(
@@ -41,6 +48,7 @@ pub fn create_schema(connection: &Connection) -> Result<()> {
         height INTEGER NOT NULL,
         txid BLOB NOT NULL,
         value INTEGER NOT NULL,
+        div BLOB NOT NULL,
         rseed BLOB NOT NULL,
         nf BLOB NOT NULL,
         dnf BLOB NOT NULL,
@@ -86,29 +94,44 @@ pub fn store_prop(connection: &Connection, name: &str, value: &str) -> Result<()
 }
 
 pub fn load_prop(connection: &Connection, name: &str) -> Result<Option<String>> {
-    let value = connection.query_row(
-        "SELECT value FROM properties WHERE name = ?1",
-        [name],
-        |r| r.get::<_, String>(0),
-    ).optional()?;
+    let value = connection
+        .query_row(
+            "SELECT value FROM properties WHERE name = ?1",
+            [name],
+            |r| r.get::<_, String>(0),
+        )
+        .optional()?;
     Ok(value)
 }
 
-pub fn list_notes(connection: &Connection) -> Result<Vec<Note>> {
+pub fn list_notes(connection: &Connection, fvk: &FullViewingKey) -> Result<Vec<orchard::Note>> {
     let mut s = connection.prepare(
-        "SELECT position, height, txid, value, rseed, nf, dnf, rho
-        FROM notes WHERE spent IS NULL")?;
+        "SELECT position, height, txid, value, div, rseed, nf, dnf, rho
+        FROM notes WHERE spent IS NULL",
+    )?;
     let notes = s.query_map([], |r| {
         let position = r.get::<_, u32>(0)?;
         let height = r.get::<_, u32>(1)?;
         let txid = r.get::<_, Vec<u8>>(2)?;
         let value = r.get::<_, u64>(3)?;
-        let rseed = r.get::<_, Vec<u8>>(4)?;
-        let nf = r.get::<_, Vec<u8>>(5)?;
-        let dnf = r.get::<_, Vec<u8>>(6)?;
-        let rho = r.get::<_, Vec<u8>>(7)?;
+        let div = r.get::<_, Vec<u8>>(4)?;
+        let rseed = r.get::<_, Vec<u8>>(5)?;
+        let nf = r.get::<_, Vec<u8>>(6)?;
+        let dnf = r.get::<_, Vec<u8>>(7)?;
+        let rho = r.get::<_, Vec<u8>>(8)?;
 
-        Ok(Note { position, height, txid, value, rseed, nf, dnf, rho })
+        let n = Note {
+            position,
+            height,
+            txid,
+            value,
+            div,
+            rseed,
+            nf,
+            dnf,
+            rho,
+        };
+        Ok(n.to_note(fvk))
     })?;
 
     Ok(notes.collect::<Result<Vec<_>, _>>()?)
@@ -120,8 +143,24 @@ pub struct Note {
     pub height: u32,
     pub txid: Vec<u8>,
     pub value: u64,
+    pub div: Vec<u8>,
     pub rseed: Vec<u8>,
     pub nf: Vec<u8>,
     pub dnf: Vec<u8>,
     pub rho: Vec<u8>,
+}
+
+impl Note {
+    fn to_note(&self, fvk: &FullViewingKey) -> orchard::Note {
+        let d = Diversifier::from_bytes(self.div.clone().try_into().unwrap());
+        let recipient = fvk.address(d, Scope::External);
+        let rho = Nullifier::from_bytes(&as_byte256(&self.rho)).unwrap();
+        orchard::Note::from_parts(
+            recipient,
+            NoteValue::from_raw(self.value),
+            rho.clone(),
+            RandomSeed::from_bytes(as_byte256(&self.rseed), &rho).unwrap(),
+        )
+        .unwrap()
+    }
 }

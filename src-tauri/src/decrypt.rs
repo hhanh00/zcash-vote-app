@@ -9,7 +9,7 @@ use orchard::{
 use zcash_address::unified::{self, Container, Encoding, Fvk};
 use zcash_note_encryption::{try_compact_note_decryption, EphemeralKeyBytes};
 
-use crate::rpc::CompactOrchardAction;
+use crate::{as_byte256, rpc::CompactOrchardAction};
 
 pub fn to_fvk(key: &str) -> Result<FullViewingKey> {
     if let Ok(m) = Mnemonic::from_phrase(key) {
@@ -51,10 +51,4 @@ pub fn try_decrypt(
     );
     let note = try_compact_note_decryption(&domain, ivk, &action).map(|na| na.0);
     Ok(note)
-}
-
-fn as_byte256(h: &[u8]) -> [u8; 32] {
-    let mut hh = [0u8; 32];
-    hh.copy_from_slice(h);
-    hh
 }

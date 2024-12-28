@@ -6727,11 +6727,13 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bip0039",
+ "hex",
  "orchard",
  "pasta_curves",
  "prost",
  "r2d2",
  "r2d2_sqlite",
+ "rand_core 0.6.4",
  "rusqlite",
  "serde",
  "serde_json",
