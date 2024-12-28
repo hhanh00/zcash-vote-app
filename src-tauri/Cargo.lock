@@ -3331,7 +3331,7 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 [[package]]
 name = "orchard"
 version = "0.3.0"
-source = "git+https://github.com/hhanh00/orchard.git?rev=482ba66#482ba66b081b5a93a71794469e48818a69a586ec"
+source = "git+https://github.com/hhanh00/orchard.git?rev=f74cecb#f74cecbfd018804d5c15b41bf954445191739a6c"
 dependencies = [
  "aes",
  "bincode",
@@ -6728,6 +6728,7 @@ dependencies = [
  "anyhow",
  "bip0039",
  "hex",
+ "incrementalmerkletree 0.3.1",
  "orchard",
  "pasta_curves",
  "prost",

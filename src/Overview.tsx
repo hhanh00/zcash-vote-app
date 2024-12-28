@@ -18,6 +18,7 @@ export function Overview() {
     const [height, setHeight] = useState<number | null | undefined>()
     const [balance, setBalance] = useState<number | undefined>()
     const [nfRoot, setNFRoot] = useState<string | undefined>()
+    const [cmxRoot, setCMXRoot] = useState<string | undefined>()
 
     useEffect(() => {
         (async () => {
@@ -38,8 +39,11 @@ export function Overview() {
             const balance: number = await invoke('get_available_balance', {})
             setBalance(balance / 100000)
 
-            const nfRoot: string = await invoke('nf_root', {})
+            await invoke('compute_roots')
+            const nfRoot: string = await invoke('get_prop', {name: 'nf_root'})
             setNFRoot(nfRoot)
+            const cmxRoot: string = await invoke('get_prop', {name: 'cmx_root'})
+            setCMXRoot(cmxRoot)
         })()
     }, [])
 
@@ -113,6 +117,7 @@ export function Overview() {
                 {progressPct && <Progress progress={progressPct}></Progress>}
                 <div className="text-xs">Current height: {height}</div>
                 {nfRoot && <div style={{fontSize: '0.5rem'}}>NF Root: {nfRoot}</div>}
+                {cmxRoot && <div style={{fontSize: '0.5rem'}}>CMX Root: {cmxRoot}</div>}
                 <div className="text-xl font-semibold text-red-600 dark:text-white">Available Voting Power: {balance ?? 'N/A - Download first'}</div>
                 <Alert color="warning" className="mt-4">
                     <span>

@@ -34,12 +34,13 @@ pub fn run() {
             state::get_election,
             state::save_db,
             state::open_db,
+            db::get_prop,
             validate::validate_key,
             download::download_reference_data,
             vote::get_sync_height,
             vote::get_available_balance,
             vote::vote,
-            trees::nf_root,
+            trees::compute_roots,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
