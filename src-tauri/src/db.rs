@@ -1,5 +1,6 @@
 use anyhow::Result;
 use rusqlite::{params, Connection, OptionalExtension};
+use serde::{Deserialize, Serialize};
 use zcash_vote::Election;
 
 pub fn create_schema(connection: &Connection) -> Result<()> {
@@ -43,7 +44,7 @@ pub fn create_schema(connection: &Connection) -> Result<()> {
         rseed BLOB NOT NULL,
         nf BLOB NOT NULL,
         dnf BLOB NOT NULL,
-        rho BLOB,
+        rho BLOB NOT NULL,
         spent INTEGER)",
         [],
     )?;
@@ -91,4 +92,36 @@ pub fn load_prop(connection: &Connection, name: &str) -> Result<Option<String>> 
         |r| r.get::<_, String>(0),
     ).optional()?;
     Ok(value)
+}
+
+pub fn list_notes(connection: &Connection) -> Result<Vec<Note>> {
+    let mut s = connection.prepare(
+        "SELECT position, height, txid, value, rseed, nf, dnf, rho
+        FROM notes WHERE spent IS NULL")?;
+    let notes = s.query_map([], |r| {
+        let position = r.get::<_, u32>(0)?;
+        let height = r.get::<_, u32>(1)?;
+        let txid = r.get::<_, Vec<u8>>(2)?;
+        let value = r.get::<_, u64>(3)?;
+        let rseed = r.get::<_, Vec<u8>>(4)?;
+        let nf = r.get::<_, Vec<u8>>(5)?;
+        let dnf = r.get::<_, Vec<u8>>(6)?;
+        let rho = r.get::<_, Vec<u8>>(7)?;
+
+        Ok(Note { position, height, txid, value, rseed, nf, dnf, rho })
+    })?;
+
+    Ok(notes.collect::<Result<Vec<_>, _>>()?)
+}
+
+#[derive(Clone, Serialize, Deserialize, Default, Debug)]
+pub struct Note {
+    pub position: u32,
+    pub height: u32,
+    pub txid: Vec<u8>,
+    pub value: u64,
+    pub rseed: Vec<u8>,
+    pub nf: Vec<u8>,
+    pub dnf: Vec<u8>,
+    pub rho: Vec<u8>,
 }

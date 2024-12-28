@@ -37,6 +37,7 @@ pub fn run() {
             download::download_reference_data,
             vote::get_sync_height,
             vote::get_available_balance,
+            vote::vote,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
