@@ -44,6 +44,7 @@ rand_core = "0.6.4"
 hex = {version = "0.4.3", features = ["serde"] }
 blake2b_simd = "1.0.2"
 bech32 = "0.9.1"
+lazy_static = "1.5.0"
 
 [patch.crates-io]
 #orchard = {path = "../../ywallet/orchard"}

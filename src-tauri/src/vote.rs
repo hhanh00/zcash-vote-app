@@ -1,8 +1,5 @@
 use crate::{
-    as_byte256,
-    db::list_notes,
-    decrypt::{to_fvk, to_sk},
-    trees::{calculate_merkle_paths, list_cmxs, list_nf_ranges},
+    address::VoteAddress, as_byte256, db::list_notes, decrypt::{to_fvk, to_sk}, trees::{calculate_merkle_paths, list_cmxs, list_nf_ranges}
 };
 use anyhow::{Error, Result};
 use blake2b_simd::Params;
@@ -18,7 +15,7 @@ use orchard::{
         proof::Proof,
         BallotCircuit as Circuit, ElectionDomain, ProvingKey,
     },
-    Address, Anchor, Note,
+    Anchor, Note,
 };
 use pasta_curves::{
     group::ff::{Field as _, PrimeField},
@@ -29,7 +26,6 @@ use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use std::{io::Write, sync::Mutex};
 use zcash_note_encryption::{COMPACT_NOTE_SIZE, OUT_CIPHERTEXT_SIZE};
-use zcash_vote::CandidateChoice;
 
 use tauri::State;
 
@@ -56,24 +52,24 @@ pub fn get_available_balance(state: State<'_, Mutex<AppState>>) -> Result<u64, S
 }
 
 #[tauri::command]
-pub fn vote(candidate: u16, amount: u64, state: State<'_, Mutex<AppState>>) -> Result<(), String> {
+pub fn vote(address: String, amount: u64, state: State<'_, Mutex<AppState>>) -> Result<String, String> {
     tauri_export!(state, connection, {
         let sk = to_sk(&state.key)?;
         let fvk = to_fvk(&state.key)?;
         let domain = state.election.domain();
-        let candidate = &state.election.candidates[candidate as usize];
         let signature_required = state.election.signature_required;
-        vote_inner(
+        let ballot = vote_inner(
             &connection,
             domain,
             signature_required,
             sk,
             &fvk,
-            candidate,
+            &address,
             amount,
             OsRng,
         )?;
-        Ok::<_, Error>(())
+        let ballot = serde_json::to_string(&ballot).unwrap();
+        Ok::<_, Error>(ballot)
     })
 }
 
@@ -83,17 +79,15 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
     signature_required: bool,
     sk: Option<SpendingKey>,
     fvk: &FullViewingKey,
-    candidate: &CandidateChoice,
+    address: &str,
     amount: u64,
     mut rng: R,
 ) -> Result<Ballot> {
-    let pk = ProvingKey::<Circuit>::build();
-
     // TODO: get anchors cmx_root and nf_root
     let nfs = list_nf_ranges(connection)?;
     let cmxs = list_cmxs(connection)?;
 
-    let candidate = Address::from_raw_address_bytes(&candidate.address).unwrap();
+    let address = VoteAddress::decode(address)?.0;
 
     let notes = list_notes(connection, fvk)?;
     let mut total_value = 0;
@@ -125,7 +119,7 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
             0 => {
                 let rseed = RandomSeed::random(&mut rng, &rho);
                 let vote_output =
-                    Note::from_parts(candidate, NoteValue::from_raw(amount), rho, rseed).unwrap();
+                    Note::from_parts(address, NoteValue::from_raw(amount), rho, rseed).unwrap();
                 vote_output
             }
             1 => {
@@ -184,7 +178,7 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
         let cmx = output.commitment();
         let cmx = ExtractedNoteCommitment::from(cmx);
 
-        let encryptor = OrchardNoteEncryption::new(None, output.clone(), candidate, [0u8; 512]);
+        let encryptor = OrchardNoteEncryption::new(None, output.clone(), address, [0u8; 512]);
         let encrypted_note = TransmittedNoteCiphertext {
             epk_bytes: encryptor.epk().to_bytes().0,
             enc_ciphertext: encryptor.encrypt_note_plaintext(),
@@ -231,6 +225,7 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
     let binding_signature = bsk.sign(&mut rng, &sighash);
     let binding_signature: [u8; 64] = (&binding_signature).into();
     let binding_signature = binding_signature.to_vec();
+    println!("Signed");
 
     let nf_positions = ballot_secrets
         .iter()
@@ -279,8 +274,9 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
             secret.rcv.clone(),
         );
 
+        println!("Proving");
         let proof =
-            Proof::<Circuit>::create(&pk, &[circuit], std::slice::from_ref(&instance), &mut rng)?;
+            Proof::<Circuit>::create(&PK, &[circuit], std::slice::from_ref(&instance), &mut rng)?;
         let proof = proof.as_ref().to_vec();
         println!("{}", proof.len());
         proofs.push(VoteProof(proof));
@@ -395,6 +391,10 @@ pub struct Ballot {
     pub witnesses: BallotWitnesses,
 }
 
+lazy_static::lazy_static! {
+    pub static ref PK: ProvingKey<Circuit> = ProvingKey::build();
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::Path;
@@ -404,9 +404,9 @@ mod tests {
     use r2d2_sqlite::SqliteConnectionManager;
     use rand_core::OsRng;
     use zcash_primitives::constants::mainnet::COIN_TYPE;
-    use zcash_vote::{CandidateChoice, Election};
+    use zcash_vote::Election;
 
-    use crate::state::AppState;
+    use crate::{address::VoteAddress, state::AppState};
 
     use super::vote_inner;
 
@@ -428,17 +428,14 @@ mod tests {
         let sk = SpendingKey::from_zip32_seed(&[0u8; 64], COIN_TYPE, 0).unwrap();
         let fvk = FullViewingKey::from(&sk);
         let address = fvk.address_at(0u64, Scope::External);
-        let candidate = CandidateChoice {
-            address: address.to_raw_address_bytes(),
-            choice: "".to_string(),
-        };
+        let address = VoteAddress(address);
         let ballot = vote_inner(
             &connection,
             domain,
             false,
             None,
             &fvk,
-            &candidate,
+            &address.to_string(),
             10000,
             OsRng,
         )

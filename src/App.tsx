@@ -13,6 +13,7 @@ import { Button, Label, Modal, TextInput } from 'flowbite-react'
 import { Controller, SubmitHandler, useForm } from 'react-hook-form'
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { Vote } from './Vote'
 
 type FormValues = {
   url: string;
@@ -28,7 +29,6 @@ function Election() {
         url: 'https://vote.zcash-infra.com/nsm-nu7',
         key: 'shadow emerge trouble police canal access evil loyal giant click night price mule just clutch math fossil curious trim denial cereal measure left slight',
       },
-      mode: 'onSubmit'
     }
   );
 
@@ -82,7 +82,7 @@ function Election() {
       <a href='/home' className='hover:text-gray-400'>Election</a>
       <a href='/overview' className='text-gray-400'>Overview</a>
       <a href='/history' className='text-gray-400'>History</a>
-      <button className='px-4 py-2 bg-blue-600 rounded hover:bg-blue-700'>Vote</button>
+      <a href='/vote' className='px-4 py-2 bg-blue-600 rounded hover:bg-blue-700'>Vote</a>
     </nav>
 
     <div className='flex flex-grow items-center justify-center'>
@@ -172,7 +172,7 @@ function App() {
           <Route path='/' element={<Navigate to='/home' />} />
           <Route path='/home' element={<Election />} />
           <Route path='/overview' element={<Overview />} />
-          <Route path='/contact' element={<div />} />
+          <Route path='/vote' element={<Vote />} />
         </Routes>
       </div>
     </Router>

@@ -8,13 +8,15 @@ use orchard::tree::{MerkleHashOrchard, MerklePath as OrchardMerklePath};
 use tauri::State;
 use zcash_vote::DEPTH;
 
-use crate::{db::store_prop, state::AppState};
+use crate::{db::{get_prop, load_prop, store_prop}, state::AppState};
 
 #[tauri::command]
 pub fn compute_roots(state: State<Mutex<AppState>>) -> Result<(), String> {
     tauri_export!(state, connection, {
-        compute_nf_root(&connection)?;
-        compute_cmx_root(&connection)?;
+        if load_prop(&connection, "cmx_root")?.is_none() {
+            compute_nf_root(&connection)?;
+            compute_cmx_root(&connection)?;
+        }
         Ok::<_, Error>(())
     })
 }
