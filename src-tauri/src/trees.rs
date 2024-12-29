@@ -4,7 +4,7 @@ use anyhow::{Error, Result};
 use incrementalmerkletree::{Altitude, Hashable};
 use pasta_curves::{group::ff::PrimeField as _, Fp};
 use rusqlite::Connection;
-use orchard::tree::MerkleHashOrchard;
+use orchard::tree::{MerkleHashOrchard, MerklePath as OrchardMerklePath};
 use tauri::State;
 use zcash_vote::DEPTH;
 
@@ -19,8 +19,7 @@ pub fn compute_roots(state: State<Mutex<AppState>>) -> Result<(), String> {
     })
 }
 
-// TODO: Pass positions of spent notes and return their MP
-pub fn compute_nf_root(connection: &Connection) -> Result<Vec<u8>> {
+pub fn list_nf_ranges(connection: &Connection) -> Result<Vec<Fp>> {
     let mut s = connection.prepare("SELECT hash FROM nullifiers")?;
     let rows = s.query_map([], |r| {
         let v = r.get::<_, [u8; 32]>(0)?;
@@ -30,14 +29,19 @@ pub fn compute_nf_root(connection: &Connection) -> Result<Vec<u8>> {
     let mut nfs = rows.collect::<Result<Vec<_>, _>>()?;
     nfs.sort();
     let nf_tree = build_nf_ranges(nfs);
+    Ok(nf_tree)
+}
+
+// TODO: Pass positions of spent notes and return their MP
+pub fn compute_nf_root(connection: &Connection) -> Result<Vec<u8>> {
+    let nf_tree = list_nf_ranges(connection)?;
     let (nf_root, _) = calculate_merkle_paths(0, &[], &nf_tree);
     store_prop(connection, "nf_root", &hex::encode(&nf_root.to_repr()))?;
 
     Ok(nf_root.to_repr().to_vec())
 }
 
-// TODO: Retrieve frontier
-pub fn compute_cmx_root(connection: &Connection) -> Result<Vec<u8>> {
+pub fn list_cmxs(connection: &Connection) -> Result<Vec<Fp>> {
     let mut s = connection.prepare("SELECT hash FROM cmxs")?;
     let rows = s.query_map([], |r| {
         let v = r.get::<_, [u8; 32]>(0)?;
@@ -45,6 +49,12 @@ pub fn compute_cmx_root(connection: &Connection) -> Result<Vec<u8>> {
         Ok(v)
     })?;
     let cmx_tree = rows.collect::<Result<Vec<_>, _>>()?;
+    Ok(cmx_tree)
+}
+
+// TODO: Retrieve frontier
+pub fn compute_cmx_root(connection: &Connection) -> Result<Vec<u8>> {
+    let cmx_tree = list_cmxs(connection)?;
     let (cmx_root, _) = calculate_merkle_paths(0, &[], &cmx_tree);
     store_prop(connection, "cmx_root", &hex::encode(&cmx_root.to_repr()))?;
 
@@ -142,6 +152,16 @@ pub struct MerklePath {
     pub path: [Fp; DEPTH],
     p: usize,
 }
+
+impl MerklePath {
+    pub fn to_orchard_merkle_tree(&self) -> OrchardMerklePath {
+        let auth_path = self.path.map(|h| MerkleHashOrchard::from_bytes(&h.to_repr()).unwrap());
+        let omp = OrchardMerklePath::from_parts(self.position,
+            auth_path);
+        omp
+    }
+}
+
 
 pub fn cmx_hash(level: u8, left: Fp, right: Fp) -> Fp {
     let left = MerkleHashOrchard::from_base(left);

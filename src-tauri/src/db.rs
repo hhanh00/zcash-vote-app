@@ -113,7 +113,7 @@ pub fn load_prop(connection: &Connection, name: &str) -> Result<Option<String>> 
     Ok(value)
 }
 
-pub fn list_notes(connection: &Connection, fvk: &FullViewingKey) -> Result<Vec<orchard::Note>> {
+pub fn list_notes(connection: &Connection, fvk: &FullViewingKey) -> Result<Vec<(orchard::Note, u32)>> {
     let mut s = connection.prepare(
         "SELECT position, height, txid, value, div, rseed, nf, dnf, rho
         FROM notes WHERE spent IS NULL",
@@ -160,16 +160,17 @@ pub struct Note {
 }
 
 impl Note {
-    fn to_note(&self, fvk: &FullViewingKey) -> orchard::Note {
+    fn to_note(&self, fvk: &FullViewingKey) -> (orchard::Note, u32) {
         let d = Diversifier::from_bytes(self.div.clone().try_into().unwrap());
         let recipient = fvk.address(d, Scope::External);
         let rho = Nullifier::from_bytes(&as_byte256(&self.rho)).unwrap();
-        orchard::Note::from_parts(
+        let note = orchard::Note::from_parts(
             recipient,
             NoteValue::from_raw(self.value),
             rho.clone(),
             RandomSeed::from_bytes(as_byte256(&self.rseed), &rho).unwrap(),
         )
-        .unwrap()
+        .unwrap();
+        (note, self.position)
     }
 }
