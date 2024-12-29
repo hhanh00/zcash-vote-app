@@ -13,7 +13,7 @@ use orchard::{
     vote::{
         circuit::{Instance, VotePowerInfo},
         proof::Proof,
-        BallotCircuit as Circuit, ElectionDomain, ProvingKey,
+        BallotCircuit as Circuit, ElectionDomain, ProvingKey, VerifyingKey,
     },
     Anchor, Note,
 };
@@ -102,7 +102,7 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
     }
     let change = total_value - amount;
 
-    let n_actions = inputs.len().min(2);
+    let n_actions = inputs.len().max(2);
     let mut ballot_actions = vec![];
     let mut ballot_secrets = vec![];
     let mut total_rcv = ValueCommitTrapdoor::zero();
@@ -199,33 +199,6 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
         println!("{}", serde_json::to_string_pretty(&ballot_action).unwrap());
         ballot_actions.push(ballot_action);
     }
-    let ballot_data = BallotData {
-        version: 1,
-        domain: domain.0.to_repr().to_vec(),
-        actions: ballot_actions.clone(),
-    };
-    let sighash = ballot_data.sighash()?;
-    println!("sighash {}", hex::encode(&sighash));
-
-    let sp_signatures = ballot_secrets
-        .iter()
-        .map(|s| {
-            s.sp_signkey.as_ref().map(|sk| {
-                let signature = sk.sign(&mut rng, &sighash);
-                let signature_bytes: [u8; 64] = (&signature).into();
-                VoteSignature(signature_bytes.to_vec())
-            })
-        })
-        .collect::<Option<Vec<_>>>();
-    if signature_required && sp_signatures.is_none() {
-        anyhow::bail!("Signature required");
-    }
-
-    let bsk: SigningKey<Binding> = total_rcv.to_bytes().try_into().unwrap();
-    let binding_signature = bsk.sign(&mut rng, &sighash);
-    let binding_signature: [u8; 64] = (&binding_signature).into();
-    let binding_signature = binding_signature.to_vec();
-    println!("Signed");
 
     let nf_positions = ballot_secrets
         .iter()
@@ -277,12 +250,58 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
         println!("Proving");
         let proof =
             Proof::<Circuit>::create(&PK, &[circuit], std::slice::from_ref(&instance), &mut rng)?;
+        // proof.verify(&VK, &[instance])?;
         let proof = proof.as_ref().to_vec();
         println!("{}", proof.len());
         proofs.push(VoteProof(proof));
     }
 
-    // TODO: ZK Proofs
+    let anchors = BallotAnchors {
+        nf: nf_root.to_repr().to_vec(),
+        cmx: cmx_root.to_repr().to_vec(),
+    };
+
+    let ballot_data = BallotData {
+        version: 1,
+        domain: domain.0.to_repr().to_vec(),
+        actions: ballot_actions.clone(),
+        anchors,
+    };
+    let sighash = ballot_data.sighash()?;
+    println!("sighash {}", hex::encode(&sighash));
+
+    let sp_signatures = ballot_secrets
+        .iter()
+        .map(|s| {
+            s.sp_signkey.as_ref().map(|sk| {
+                let signature = sk.sign(&mut rng, &sighash);
+                let signature_bytes: [u8; 64] = (&signature).into();
+                VoteSignature(signature_bytes.to_vec())
+            })
+        })
+        .collect::<Option<Vec<_>>>();
+    if signature_required && sp_signatures.is_none() {
+        anyhow::bail!("Signature required");
+    }
+
+    let bsk: SigningKey<Binding> = total_rcv.to_bytes().try_into().unwrap();
+    let binding_signature = bsk.sign(&mut rng, &sighash);
+    let binding_signature: [u8; 64] = (&binding_signature).into();
+    let binding_signature = binding_signature.to_vec();
+    let bvk: VerificationKey<Binding> = (&bsk).into();
+    let mut total_cv_net = ValueCommitment::derive_from_value(0);
+    for a in ballot_data.actions.iter() {
+        let cv_net = ValueCommitment::from_bytes(&as_byte256(&a.cv_net)).unwrap();
+        total_cv_net = total_cv_net + &cv_net;
+    }
+    let bvk1: [u8; 32] = bvk.try_into().unwrap();
+    let bvk2 = total_cv_net.to_bytes();
+    println!("bvk {}", hex::encode(&bvk1));
+    println!("bvk {}", hex::encode(&bvk2));
+    assert_eq!(bvk1, bvk2);
+
+    println!("Signed");
+
     let witnesses = BallotWitnesses {
         proofs,
         sp_signatures,
@@ -295,6 +314,14 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
     };
 
     Ok(ballot)
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct BallotAnchors {
+    #[serde(with = "hex")]
+    pub nf: Vec<u8>,
+    #[serde(with = "hex")]
+    pub cmx: Vec<u8>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -345,6 +372,7 @@ pub struct BallotData {
     pub version: u32,
     #[serde(with = "hex")] pub domain: Vec<u8>,
     pub actions: Vec<BallotAction>,
+    pub anchors: BallotAnchors,
 }
 
 impl BallotData {
@@ -372,10 +400,10 @@ impl BallotData {
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct VoteProof(#[serde(with = "hex")] Vec<u8>);
+pub struct VoteProof(#[serde(with = "hex")] pub Vec<u8>);
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct VoteSignature(#[serde(with = "hex")] Vec<u8>);
+pub struct VoteSignature(#[serde(with = "hex")] pub Vec<u8>);
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct BallotWitnesses {
@@ -393,6 +421,7 @@ pub struct Ballot {
 
 lazy_static::lazy_static! {
     pub static ref PK: ProvingKey<Circuit> = ProvingKey::build();
+    pub static ref VK: VerifyingKey<Circuit> = VerifyingKey::build();
 }
 
 #[cfg(test)]
