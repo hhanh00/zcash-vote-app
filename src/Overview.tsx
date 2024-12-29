@@ -74,7 +74,7 @@ export function Overview() {
             <a href="/home" className="hover:text-gray-400">Election</a>
             <a href="/overview">Overview</a>
             <a href="/history" className="hover:text-gray-400">History</a>
-            <button className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700">Vote</button>
+            <a href='/vote' className='px-4 py-2 bg-blue-600 rounded hover:bg-blue-700'>Vote</a>
         </nav>
         <div className="flex items-center justify-center min-h-screen bg-gray-100">
             <Card className="max-w-md">

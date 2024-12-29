@@ -6731,6 +6731,7 @@ dependencies = [
  "blake2b_simd",
  "hex",
  "incrementalmerkletree 0.3.1",
+ "lazy_static",
  "orchard",
  "pasta_curves",
  "prost",

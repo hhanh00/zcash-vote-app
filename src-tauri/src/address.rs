@@ -12,13 +12,13 @@ pub struct VoteAddress(pub Address);
 const VOTE_HRP: &str = "zvote";
 
 impl VoteAddress {
-    pub fn decode(s: String) -> Result<Self> { 
+    pub fn decode(s: &str) -> Result<Self> {
         let (hrp, data, _) = bech32::decode(&s)?;
         if &hrp != VOTE_HRP {
             anyhow::bail!("Invalid Address (incorrect prefix)");
         }
         let data = Vec::<u8>::from_base32(&data)?;
-        if data.len() != 43 { 
+        if data.len() != 43 {
             anyhow::bail!("Invalid Address (incorrect length)")
         }
         let address = Address::from_raw_address_bytes(&data.try_into().unwrap());
@@ -28,8 +28,8 @@ impl VoteAddress {
         let address = address.unwrap();
         Ok(VoteAddress(address))
     }
-    
-    pub fn encode(&self) -> String { 
+
+    pub fn encode(&self) -> String {
         let address = &self.0;
         let address = address.to_raw_address_bytes();
         let address = address.to_base32();
