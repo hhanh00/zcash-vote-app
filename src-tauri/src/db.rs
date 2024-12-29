@@ -1,4 +1,6 @@
-use anyhow::Result;
+use std::sync::Mutex;
+
+use anyhow::{Error, Result};
 use orchard::{
     keys::{Diversifier, FullViewingKey, Scope},
     note::{Nullifier, RandomSeed},
@@ -6,9 +8,10 @@ use orchard::{
 };
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
+use tauri::State;
 use zcash_vote::Election;
 
-use crate::as_byte256;
+use crate::{as_byte256, state::AppState};
 
 pub fn create_schema(connection: &Connection) -> Result<()> {
     connection.execute(
@@ -30,8 +33,7 @@ pub fn create_schema(connection: &Connection) -> Result<()> {
     connection.execute(
         "CREATE TABLE IF NOT EXISTS nullifiers(
         id_nf INTEGER PRIMARY KEY NOT NULL,
-        hash BLOB NOT NULL,
-        revhash BLOB NOT NULL)",
+        hash BLOB NOT NULL)",
         [],
     )?;
     connection.execute(
@@ -91,6 +93,13 @@ pub fn store_prop(connection: &Connection, name: &str, value: &str) -> Result<()
         params![name, value],
     )?;
     Ok(())
+}
+
+#[tauri::command]
+pub fn get_prop(name: String, state: State<Mutex<AppState>>) -> Result<Option<String>, String> {
+    tauri_export!(state, connection, {
+        Ok::<_, Error>(load_prop(&connection, &name)?)
+    })
 }
 
 pub fn load_prop(connection: &Connection, name: &str) -> Result<Option<String>> {

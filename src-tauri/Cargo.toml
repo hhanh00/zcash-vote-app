@@ -39,11 +39,12 @@ zcash_address = "0.2.0"
 zcash_note_encryption = "0.2.0"
 zcash_primitives = "0.10.2"
 pasta_curves = "0.5.1"
+incrementalmerkletree = "0.3.1"
 rand_core = "0.6.4"
-hex = {version = "0.4.3", features = ["serde"]}
+hex = {version = "0.4.3", features = ["serde"] }
 
 [patch.crates-io]
-orchard = {git = "https://github.com/hhanh00/orchard.git", rev="0d7807e"}
+orchard = {git = "https://github.com/hhanh00/orchard.git", rev="f74cecb"}
 halo2_gadgets  = { git = "https://github.com/zcash/halo2.git", rev = "642924d614305d882cc122739c59144109f4bd3f" }
 halo2_proofs = { git = "https://github.com/zcash/halo2.git", rev = "642924d614305d882cc122739c59144109f4bd3f" }
 
