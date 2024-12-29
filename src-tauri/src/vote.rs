@@ -1,5 +1,6 @@
 use crate::{db::list_notes, decrypt::to_fvk};
 use anyhow::{Error, Result};
+use blake2b_simd::Params;
 use orchard::{
     keys::{FullViewingKey, Scope, SpendValidatingKey},
     note::{ExtractedNoteCommitment, RandomSeed, TransmittedNoteCiphertext},
@@ -8,11 +9,11 @@ use orchard::{
     vote::ElectionDomain,
     Address, Note,
 };
-use pasta_curves::{group::ff::Field as _, Fq};
+use pasta_curves::{group::ff::Field as _, Fp, Fq};
 use rand_core::{CryptoRng, OsRng, RngCore};
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
-use std::sync::Mutex;
+use std::{io::Write, sync::Mutex};
 use zcash_note_encryption::{COMPACT_NOTE_SIZE, OUT_CIPHERTEXT_SIZE};
 use zcash_vote::CandidateChoice;
 
@@ -76,6 +77,7 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
     let change = total_value - amount;
 
     let n_actions = inputs.len().min(2);
+    let mut ballot_actions = vec![];
     let mut total_rcv = ValueCommitTrapdoor::zero();
     for i in 0..n_actions {
         let (fvk, spend) = if i < inputs.len() {
@@ -131,7 +133,7 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
         compact_enc.copy_from_slice(&encrypted_note.enc_ciphertext[0..COMPACT_NOTE_SIZE]);
 
         let rk: [u8; 32] = rk.into();
-        let ballot_data = BallotData {
+        let ballot_action = BallotAction {
             cv_net: cv_net.to_bytes().to_vec(),
             rk: rk.to_vec(),
             nf: dnf.to_bytes().to_vec(),
@@ -139,14 +141,18 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
             epk: encrypted_note.epk_bytes.to_vec(),
             enc: compact_enc.to_vec(),
         };
-        println!("{}", serde_json::to_string_pretty(&ballot_data).unwrap());
+        println!("{}", serde_json::to_string_pretty(&ballot_action).unwrap());
+        ballot_actions.push(ballot_action);
     }
+    let ballot_data = BallotData {
+        version: 1, domain: domain.0, actions: ballot_actions, };
+    println!("sighash {}", hex::encode(&ballot_data.sighash()?));
 
     Ok(())
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct BallotData {
+pub struct BallotAction {
     #[serde(with = "hex")]
     pub cv_net: Vec<u8>,
     #[serde(with = "hex")]
@@ -160,6 +166,45 @@ pub struct BallotData {
     #[serde(with = "hex")]
     pub enc: Vec<u8>,
 }
+
+impl BallotAction {
+    pub fn write<W: Write>(&self, mut w: W) -> std::io::Result<()> {
+        w.write_all(&self.cv_net)?;
+        w.write_all(&self.rk)?;
+        w.write_all(&self.nf)?;
+        w.write_all(&self.cmx)?;
+        w.write_all(&self.epk)?;
+        w.write_all(&self.enc)?;
+        Ok(())
+    }
+}
+
+pub struct BallotData {
+    pub version: u32,
+    pub domain: Fp,
+    pub actions: Vec<BallotAction>,
+}
+
+impl BallotData {
+    pub fn sighash(&self) -> Result<Vec<u8>> {
+        let mut buffer: Vec<u8> = vec![];
+        self.write(&mut buffer)?;
+        let sighash = Params::new().hash_length(32).personal(b"Zcash_VoteBallot")
+        .hash(&buffer).as_bytes().to_vec();
+        Ok(sighash)
+    }
+
+    pub fn write<W: Write>(&self, mut w: W) -> std::io::Result<()> {
+        w.write_all(&self.version.to_le_bytes())?;
+        let n_actions = self.actions.len() as u32;
+        w.write_all(&n_actions.to_le_bytes())?;
+        for a in self.actions.iter() {
+            a.write(&mut w)?;
+        }
+        Ok(())
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
