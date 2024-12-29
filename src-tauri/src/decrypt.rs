@@ -11,12 +11,19 @@ use zcash_note_encryption::{try_compact_note_decryption, EphemeralKeyBytes};
 
 use crate::{as_byte256, rpc::CompactOrchardAction};
 
-pub fn to_fvk(key: &str) -> Result<FullViewingKey> {
+pub fn to_sk(key: &str) -> Result<Option<SpendingKey>> {
     if let Ok(m) = Mnemonic::from_phrase(key) {
         let seed = m.to_seed("");
         let spk =
             SpendingKey::from_zip32_seed(&seed, zcash_primitives::constants::mainnet::COIN_TYPE, 0)
                 .map_err(|_| anyhow!("Failed to derive zip-32"))?;
+        return Ok(Some(spk));
+    }
+    Ok(None)
+}
+
+pub fn to_fvk(key: &str) -> Result<FullViewingKey> {
+    if let Some(spk) = to_sk(key)? {
         return Ok(FullViewingKey::from(&spk));
     } else {
         let (_, ufvk) = unified::Ufvk::decode(&key)?;

@@ -1,10 +1,14 @@
-use crate::{db::list_notes, decrypt::to_fvk};
+use crate::{
+    db::list_notes,
+    decrypt::{to_fvk, to_sk},
+};
 use anyhow::{Error, Result};
 use blake2b_simd::Params;
 use orchard::{
-    keys::{FullViewingKey, Scope, SpendValidatingKey},
+    keys::{FullViewingKey, Scope, SpendAuthorizingKey, SpendValidatingKey, SpendingKey},
     note::{ExtractedNoteCommitment, RandomSeed, TransmittedNoteCiphertext},
     note_encryption::OrchardNoteEncryption,
+    primitives::redpallas::{Binding, SigningKey, SpendAuth},
     value::{NoteValue, ValueCommitTrapdoor, ValueCommitment},
     vote::ElectionDomain,
     Address, Note,
@@ -44,16 +48,20 @@ pub fn get_available_balance(state: State<'_, Mutex<AppState>>) -> Result<u64, S
 #[tauri::command]
 pub fn vote(candidate: u16, amount: u64, state: State<'_, Mutex<AppState>>) -> Result<(), String> {
     tauri_export!(state, connection, {
+        let sk = to_sk(&state.key)?;
         let fvk = to_fvk(&state.key)?;
         let domain = state.election.domain();
         let candidate = &state.election.candidates[candidate as usize];
-        vote_inner(&connection, domain, &fvk, candidate, amount, OsRng)
+        let signature_required = state.election.signature_required;
+        vote_inner(&connection, domain, signature_required, sk, &fvk, candidate, amount, OsRng)
     })
 }
 
 pub fn vote_inner<R: RngCore + CryptoRng>(
     connection: &Connection,
     domain: ElectionDomain,
+    signature_required: bool,
+    sk: Option<SpendingKey>,
     fvk: &FullViewingKey,
     candidate: &CandidateChoice,
     amount: u64,
@@ -78,6 +86,7 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
 
     let n_actions = inputs.len().min(2);
     let mut ballot_actions = vec![];
+    let mut ballot_secrets = vec![];
     let mut total_rcv = ValueCommitTrapdoor::zero();
     for i in 0..n_actions {
         let (fvk, spend) = if i < inputs.len() {
@@ -119,6 +128,12 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
         let alpha = Fq::random(&mut rng);
         let svk = SpendValidatingKey::from(fvk);
         let rk = svk.randomize(&alpha);
+        let sp_signkey = sk.map(|sk| {
+            let spak = SpendAuthorizingKey::from(&sk);
+            let sp_signkey = spak.randomize(&alpha);
+            sp_signkey
+        });
+        ballot_secrets.push(BallotActionSecret { alpha, sp_signkey });
 
         let cmx = output.commitment();
         let cmx = ExtractedNoteCommitment::from(cmx);
@@ -145,8 +160,33 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
         ballot_actions.push(ballot_action);
     }
     let ballot_data = BallotData {
-        version: 1, domain: domain.0, actions: ballot_actions, };
-    println!("sighash {}", hex::encode(&ballot_data.sighash()?));
+        version: 1,
+        domain: domain.0,
+        actions: ballot_actions,
+    };
+    let sighash = ballot_data.sighash()?;
+    println!("sighash {}", hex::encode(&sighash));
+
+    let sp_signatures = ballot_secrets.iter().map(|s| {
+        s.sp_signkey.as_ref().map(|sk| {
+            let signature = sk.sign(&mut rng, &sighash);
+            let signature_bytes: [u8; 64] = (&signature).into();
+            signature_bytes.to_vec()
+        })
+    }).collect::<Option<Vec<_>>>();
+    if signature_required && sp_signatures.is_none() {
+        anyhow::bail!("Signature required");
+    }
+
+    let bsk: SigningKey<Binding> = total_rcv.to_bytes().try_into().unwrap();
+    let binding_signature = bsk.sign(&mut rng, &sighash);
+    let binding_signature: [u8; 64] = (&binding_signature).into();
+    let binding_signature = binding_signature.to_vec();
+
+    // TODO: ZK Proofs
+    let _witnesses = BallotWitnesses {
+        proofs: vec![],
+        sp_signatures, binding_signature };
 
     Ok(())
 }
@@ -179,6 +219,11 @@ impl BallotAction {
     }
 }
 
+pub struct BallotActionSecret {
+    pub alpha: Fq,
+    pub sp_signkey: Option<SigningKey<SpendAuth>>,
+}
+
 pub struct BallotData {
     pub version: u32,
     pub domain: Fp,
@@ -189,8 +234,12 @@ impl BallotData {
     pub fn sighash(&self) -> Result<Vec<u8>> {
         let mut buffer: Vec<u8> = vec![];
         self.write(&mut buffer)?;
-        let sighash = Params::new().hash_length(32).personal(b"Zcash_VoteBallot")
-        .hash(&buffer).as_bytes().to_vec();
+        let sighash = Params::new()
+            .hash_length(32)
+            .personal(b"Zcash_VoteBallot")
+            .hash(&buffer)
+            .as_bytes()
+            .to_vec();
         Ok(sighash)
     }
 
@@ -205,6 +254,12 @@ impl BallotData {
     }
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct BallotWitnesses {
+    pub proofs: Vec<Vec<u8>>,
+    pub sp_signatures: Option<Vec<Vec<u8>>>,
+    pub binding_signature: Vec<u8>,
+}
 
 #[cfg(test)]
 mod tests {
@@ -243,6 +298,6 @@ mod tests {
             address: address.to_raw_address_bytes(),
             choice: "".to_string(),
         };
-        vote_inner(&connection, domain, &fvk, &candidate, 10000, OsRng).unwrap();
+        vote_inner(&connection, domain, false, None, &fvk, &candidate, 10000, OsRng).unwrap();
     }
 }
