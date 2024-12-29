@@ -6727,6 +6727,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bip0039",
+ "blake2b_simd",
  "hex",
  "incrementalmerkletree 0.3.1",
  "orchard",
