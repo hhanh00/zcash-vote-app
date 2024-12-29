@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { Button, Label, TextInput } from "flowbite-react";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 type Vote = {
@@ -16,12 +17,14 @@ export function Vote() {
             },
         }
     );
+    const [ballot, setBallot] = useState<string | undefined>();
 
     const onVote = (data: Vote) => {
         console.log(data);
         (async () => {
-            const ballot = await invoke('vote', data)
+            const ballot: string = await invoke('vote', data)
             console.log(ballot)
+            setBallot(ballot)
         })()
     }
 
@@ -66,6 +69,7 @@ export function Vote() {
 
                 <Button type="submit">Vote</Button>
             </form>
+            {ballot && <textarea>{ballot}</textarea>}
         </div>
     </>
 }
