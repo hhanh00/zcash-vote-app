@@ -8,7 +8,7 @@ type Vote = {
 }
 
 export function Vote() {
-    const { control, handleSubmit, formState: { errors } } = useForm(
+    const { control, handleSubmit } = useForm(
         {
             defaultValues: {
                 address: 'zvote1tvdxsx8xau9z8qy9rk5mjkl7zn3vmtw9zcg7rzsrfuzl05aff296ywz2348yu7q27jg2cfewz3a',
