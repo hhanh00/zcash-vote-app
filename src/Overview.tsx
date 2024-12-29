@@ -19,6 +19,7 @@ export function Overview() {
     const [balance, setBalance] = useState<number | undefined>()
     const [nfRoot, setNFRoot] = useState<string | undefined>()
     const [cmxRoot, setCMXRoot] = useState<string | undefined>()
+    const [address, setAddress] = useState<string | undefined>()
 
     useEffect(() => {
         (async () => {
@@ -44,6 +45,9 @@ export function Overview() {
             setNFRoot(nfRoot)
             const cmxRoot: string = await invoke('get_prop', {name: 'cmx_root'})
             setCMXRoot(cmxRoot)
+
+            const address: string = await invoke('get_address', {})
+            setAddress(address)
         })()
     }, [])
 
@@ -116,6 +120,7 @@ export function Overview() {
                 {typeof(height) !== "number" && <Button onClick={download}>Download</Button>}
                 {progressPct && <Progress progress={progressPct}></Progress>}
                 <div className="text-xs">Current height: {height}</div>
+                <div className="break-all text-sm">{address}</div>
                 {nfRoot && <div style={{fontSize: '0.5rem'}}>NF Root: {nfRoot}</div>}
                 {cmxRoot && <div style={{fontSize: '0.5rem'}}>CMX Root: {cmxRoot}</div>}
                 <div className="text-xl font-semibold text-red-600 dark:text-white">Available Voting Power: {balance ?? 'N/A - Download first'}</div>

@@ -6726,6 +6726,7 @@ name = "zcash-vote-app"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bech32 0.9.1",
  "bip0039",
  "blake2b_simd",
  "hex",

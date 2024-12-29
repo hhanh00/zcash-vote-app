@@ -21,6 +21,7 @@ pub mod validate;
 pub mod download;
 pub mod decrypt;
 pub mod trees;
+pub mod address;
 pub mod vote;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -34,6 +35,7 @@ pub fn run() {
             state::get_election,
             state::save_db,
             state::open_db,
+            address::get_address,
             db::get_prop,
             validate::validate_key,
             download::download_reference_data,
