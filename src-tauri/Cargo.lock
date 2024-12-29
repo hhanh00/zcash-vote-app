@@ -6694,7 +6694,7 @@ dependencies = [
 [[package]]
 name = "zcash-vote"
 version = "0.1.0"
-source = "git+https://github.com/hhanh00/zcash-vote.git?rev=b616ef2#b616ef25d23abf6b5ab56d0ba30c6c9a297d7015"
+source = "git+https://github.com/hhanh00/zcash-vote.git?rev=8a43419#8a43419a968b391ab6ed6c5ee924a0050e3d46dc"
 dependencies = [
  "blake2b_simd",
  "dotenv",
