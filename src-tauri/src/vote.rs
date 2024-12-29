@@ -14,7 +14,9 @@ use orchard::{
     primitives::redpallas::{Binding, SigningKey, SpendAuth, VerificationKey},
     value::{NoteValue, ValueCommitTrapdoor, ValueCommitment},
     vote::{
-        circuit::{Instance, VotePowerInfo}, proof::Proof, BallotCircuit as Circuit, ElectionDomain, ProvingKey
+        circuit::{Instance, VotePowerInfo},
+        proof::Proof,
+        BallotCircuit as Circuit, ElectionDomain, ProvingKey,
     },
     Address, Anchor, Note,
 };
@@ -70,7 +72,8 @@ pub fn vote(candidate: u16, amount: u64, state: State<'_, Mutex<AppState>>) -> R
             candidate,
             amount,
             OsRng,
-        )
+        )?;
+        Ok::<_, Error>(())
     })
 }
 
@@ -83,7 +86,7 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
     candidate: &CandidateChoice,
     amount: u64,
     mut rng: R,
-) -> Result<()> {
+) -> Result<Ballot> {
     let pk = ProvingKey::<Circuit>::build();
 
     // TODO: get anchors cmx_root and nf_root
@@ -204,8 +207,8 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
     }
     let ballot_data = BallotData {
         version: 1,
-        domain: domain.0,
-        actions: &ballot_actions,
+        domain: domain.0.to_repr().to_vec(),
+        actions: ballot_actions.clone(),
     };
     let sighash = ballot_data.sighash()?;
     println!("sighash {}", hex::encode(&sighash));
@@ -216,7 +219,7 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
             s.sp_signkey.as_ref().map(|sk| {
                 let signature = sk.sign(&mut rng, &sighash);
                 let signature_bytes: [u8; 64] = (&signature).into();
-                signature_bytes.to_vec()
+                VoteSignature(signature_bytes.to_vec())
             })
         })
         .collect::<Option<Vec<_>>>();
@@ -262,30 +265,40 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
             nf_start: secret.nf_start,
             nf_path: nf_mp.to_orchard_merkle_tree(),
         };
-        let spend_info =
-            SpendInfo::new(secret.fvk.clone(), secret.spend_note, cmx_mp.to_orchard_merkle_tree()).unwrap();
-        let circuit =
-            Circuit::from_action_context_unchecked(vote_power, spend_info, secret.output_note, secret.alpha, secret.rcv.clone());
+        let spend_info = SpendInfo::new(
+            secret.fvk.clone(),
+            secret.spend_note,
+            cmx_mp.to_orchard_merkle_tree(),
+        )
+        .unwrap();
+        let circuit = Circuit::from_action_context_unchecked(
+            vote_power,
+            spend_info,
+            secret.output_note,
+            secret.alpha,
+            secret.rcv.clone(),
+        );
 
-        let proof = Proof::<Circuit>::create(
-            &pk,
-            &[circuit],
-            std::slice::from_ref(&instance),
-            &mut rng,
-        )?;
+        let proof =
+            Proof::<Circuit>::create(&pk, &[circuit], std::slice::from_ref(&instance), &mut rng)?;
         let proof = proof.as_ref().to_vec();
         println!("{}", proof.len());
-        proofs.push(proof);
+        proofs.push(VoteProof(proof));
     }
 
     // TODO: ZK Proofs
-    let _witnesses = BallotWitnesses {
+    let witnesses = BallotWitnesses {
         proofs,
         sp_signatures,
         binding_signature,
     };
 
-    Ok(())
+    let ballot = Ballot {
+        data: ballot_data,
+        witnesses,
+    };
+
+    Ok(ballot)
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -331,13 +344,14 @@ pub struct BallotActionSecret {
     pub rk: VerificationKey<SpendAuth>,
 }
 
-pub struct BallotData<'a> {
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct BallotData {
     pub version: u32,
-    pub domain: Fp,
-    pub actions: &'a [BallotAction],
+    #[serde(with = "hex")] pub domain: Vec<u8>,
+    pub actions: Vec<BallotAction>,
 }
 
-impl<'a> BallotData<'a> {
+impl BallotData {
     pub fn sighash(&self) -> Result<Vec<u8>> {
         let mut buffer: Vec<u8> = vec![];
         self.write(&mut buffer)?;
@@ -362,10 +376,23 @@ impl<'a> BallotData<'a> {
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct VoteProof(#[serde(with = "hex")] Vec<u8>);
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct VoteSignature(#[serde(with = "hex")] Vec<u8>);
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct BallotWitnesses {
-    pub proofs: Vec<Vec<u8>>,
-    pub sp_signatures: Option<Vec<Vec<u8>>>,
+    pub proofs: Vec<VoteProof>,
+    pub sp_signatures: Option<Vec<VoteSignature>>,
+    #[serde(with = "hex")]
     pub binding_signature: Vec<u8>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct Ballot {
+    pub data: BallotData,
+    pub witnesses: BallotWitnesses,
 }
 
 #[cfg(test)]
@@ -405,7 +432,7 @@ mod tests {
             address: address.to_raw_address_bytes(),
             choice: "".to_string(),
         };
-        vote_inner(
+        let ballot = vote_inner(
             &connection,
             domain,
             false,
@@ -416,5 +443,6 @@ mod tests {
             OsRng,
         )
         .unwrap();
+        println!("{}", serde_json::to_string_pretty(&ballot).unwrap());
     }
 }
