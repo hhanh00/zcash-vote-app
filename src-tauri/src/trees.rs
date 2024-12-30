@@ -6,9 +6,9 @@ use pasta_curves::{group::ff::PrimeField as _, Fp};
 use rusqlite::Connection;
 use orchard::tree::{MerkleHashOrchard, MerklePath as OrchardMerklePath};
 use tauri::State;
-use zcash_vote::DEPTH;
+use zcash_vote::{db::{load_prop, store_prop}, DEPTH};
 
-use crate::{db::{load_prop, store_prop}, state::AppState};
+use crate::state::AppState;
 
 #[tauri::command]
 pub fn compute_roots(state: State<Mutex<AppState>>) -> Result<(), String> {

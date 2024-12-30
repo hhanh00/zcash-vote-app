@@ -6694,8 +6694,10 @@ dependencies = [
 [[package]]
 name = "zcash-vote"
 version = "0.1.0"
-source = "git+https://github.com/hhanh00/zcash-vote.git?rev=8a43419#8a43419a968b391ab6ed6c5ee924a0050e3d46dc"
+source = "git+https://github.com/hhanh00/zcash-vote.git?rev=8ca5958#8ca5958f020ee44d603df41f49355e7f15572ee2"
 dependencies = [
+ "anyhow",
+ "bip0039",
  "blake2b_simd",
  "dotenv",
  "ff 0.13.0",
@@ -6704,6 +6706,7 @@ dependencies = [
  "halo2_proofs",
  "hex",
  "http 0.2.12",
+ "incrementalmerkletree 0.3.1",
  "lazy_static",
  "log",
  "orchard",
@@ -6718,6 +6721,8 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio",
  "tonic",
+ "zcash_address 0.2.1",
+ "zcash_note_encryption 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "zcash_primitives 0.10.2 (git+https://github.com/hhanh00/librustzcash.git?rev=e2fe0b8d386fad99e00d6135c5caf3cc04045646)",
 ]
 

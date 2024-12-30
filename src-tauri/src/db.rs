@@ -6,61 +6,12 @@ use orchard::{
     note::{Nullifier, RandomSeed},
     value::NoteValue,
 };
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use tauri::State;
-use zcash_vote::Election;
+use zcash_vote::{db::{load_prop, store_prop}, Election};
 
 use crate::{as_byte256, state::AppState};
-
-pub fn create_schema(connection: &Connection) -> Result<()> {
-    connection.execute(
-        "CREATE TABLE IF NOT EXISTS properties(
-            id_property INTEGER PRIMARY KEY,
-            name TEXT NOT NULL UNIQUE,
-            value TEXT NOT NULL
-        )",
-        [],
-    )?;
-    connection.execute(
-        "CREATE TABLE IF NOT EXISTS ballots(
-            id_ballot INTEGER PRIMARY KEY,
-            hash BLOB NOT NULL UNIQUE,
-            data BLOB NOT NULL
-        )",
-        [],
-    )?;
-    connection.execute(
-        "CREATE TABLE IF NOT EXISTS nullifiers(
-        id_nf INTEGER PRIMARY KEY NOT NULL,
-        hash BLOB NOT NULL)",
-        [],
-    )?;
-    connection.execute(
-        "CREATE TABLE IF NOT EXISTS cmxs(
-        id_cmx INTEGER PRIMARY KEY NOT NULL,
-        hash BLOB NOT NULL)",
-        [],
-    )?;
-
-    connection.execute(
-        "CREATE TABLE IF NOT EXISTS notes(
-        id_note INTEGER PRIMARY KEY,
-        position INTEGER NOT NULL UNIQUE,
-        height INTEGER NOT NULL,
-        txid BLOB NOT NULL,
-        value INTEGER NOT NULL,
-        div BLOB NOT NULL,
-        rseed BLOB NOT NULL,
-        nf BLOB NOT NULL,
-        dnf BLOB NOT NULL,
-        rho BLOB NOT NULL,
-        spent INTEGER)",
-        [],
-    )?;
-
-    Ok(())
-}
 
 pub fn store_election(
     connection: &Connection,
@@ -86,31 +37,11 @@ pub fn load_election(connection: &Connection) -> Result<(String, Election, Strin
     Ok((url, election, key))
 }
 
-pub fn store_prop(connection: &Connection, name: &str, value: &str) -> Result<()> {
-    connection.execute(
-        "INSERT INTO properties(name, value) VALUES (?1, ?2)
-        ON CONFLICT (name) DO UPDATE SET value = excluded.value",
-        params![name, value],
-    )?;
-    Ok(())
-}
-
 #[tauri::command]
 pub fn get_prop(name: String, state: State<Mutex<AppState>>) -> Result<Option<String>, String> {
     tauri_export!(state, connection, {
         Ok::<_, Error>(load_prop(&connection, &name)?)
     })
-}
-
-pub fn load_prop(connection: &Connection, name: &str) -> Result<Option<String>> {
-    let value = connection
-        .query_row(
-            "SELECT value FROM properties WHERE name = ?1",
-            [name],
-            |r| r.get::<_, String>(0),
-        )
-        .optional()?;
-    Ok(value)
 }
 
 pub fn list_notes(connection: &Connection, fvk: &FullViewingKey) -> Result<Vec<(orchard::Note, u32)>> {
