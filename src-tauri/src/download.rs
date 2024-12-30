@@ -1,16 +1,11 @@
 use std::sync::Mutex;
 
 use anyhow::{Error, Result};
-use orchard::{keys::{FullViewingKey, PreparedIncomingViewingKey, Scope}, vote::ElectionDomain};
-use rusqlite::{params, Connection};
 use tauri::{ipc::Channel, State};
-use tonic::Request;
+use zcash_vote::db::{load_prop, store_prop};
 
 use crate::{
-    db::store_prop,
-    decrypt::{to_fvk, try_decrypt},
-    rpc::{self, compact_tx_streamer_client::CompactTxStreamerClient, BlockId, CompactBlock},
-    state::AppState,
+    decrypt::to_fvk, state::AppState
 };
 
 #[tauri::command]
@@ -18,106 +13,22 @@ pub async fn download_reference_data(
     state: State<'_, Mutex<AppState>>,
     channel: Channel<u32>,
 ) -> Result<(), String> {
-    let (connection, fvk, pivk, domain, start, end) = {
-        let s = state.lock().unwrap();
-        let fvk = to_fvk(&s.key).map_err(|e| e.to_string())?;
-        let ivk = fvk.to_ivk(Scope::External);
-        let pivk = PreparedIncomingViewingKey::new(&ivk);
-        let connection = s.pool.get().unwrap();
-        let e = &s.election;
-        let domain = e.domain();
-        (
-            connection,
-            fvk,
-            pivk,
-            domain,
-            e.start_height as u64,
-            e.end_height as u64,
-        )
-    };
-
-    let task = tokio::spawn(async move {
-        let mut client = CompactTxStreamerClient::connect("https://zec.rocks").await?;
-        let mut blocks = client
-            .get_block_range(Request::new(rpc::BlockRange {
-                start: Some(BlockId {
-                    height: start + 1,
-                    hash: vec![],
-                }),
-                end: Some(BlockId {
-                    height: end,
-                    hash: vec![],
-                }),
-                spam_filter_threshold: 0,
-            }))
-            .await?
-            .into_inner();
-        let mut position = 0usize;
-        while let Some(block) = blocks.message().await? {
-            let height = block.height as u32;
-            if height % 1000 == 0 || height == end as u32 {
-                store_prop(&connection, "height", &height.to_string())?;
-                channel.send(block.height as u32)?;
-            }
-            let inc_position = handle_block(&connection, &domain, &fvk, &pivk, position, block)?;
-            position += inc_position;
-        }
-
+    let r = async {
+        let (connection, election, fvk) = {
+            let s = state.lock().unwrap();
+            let fvk = to_fvk(&s.key)?;
+            let connection = s.pool.get().unwrap();
+            let election = s.election.clone();
+            (connection, election, fvk)
+        };
+        let lwd_url = load_prop(&connection, "lwd")?.unwrap_or("https://zec.rocks".to_string());
+        let (connection, h) = zcash_vote::download::download_reference_data(connection, election, fvk, 
+            &lwd_url, move |h| {
+            let _ = channel.send(h);
+        }).await?;
+        store_prop(&connection, "height", &h.to_string()).unwrap();
         Ok::<_, Error>(())
-    });
-
-    tokio::spawn(async move {
-        match task.await {
-            Ok(Ok(_)) => println!("Task completed successfully."),
-            Ok(Err(err)) => eprintln!("Task returned an error: {}", err),
-            Err(err) => eprintln!("Task panicked: {:?}", err),
-        }
-    }).await.unwrap();
-
-    Ok(())
+    };
+    r.await.map_err(|e| e.to_string())
 }
 
-fn handle_block(
-    connection: &Connection,
-    domain: &ElectionDomain,
-    fvk: &FullViewingKey,
-    pivk: &PreparedIncomingViewingKey,
-    start_position: usize,
-    block: CompactBlock,
-) -> Result<usize> {
-    let mut s_cmx = connection.prepare_cached("INSERT INTO cmxs(hash) VALUES (?1)")?;
-    let mut s_nf = connection.prepare_cached("INSERT INTO nullifiers(hash) VALUES (?1)")?;
-    let mut position = 0usize;
-    for tx in block.vtx {
-        for a in tx.actions {
-            if let Some(note) = try_decrypt(pivk, &a)? {
-                let p = start_position + position;
-                let height = block.height;
-                let txid = &tx.hash;
-                let value = note.value().inner();
-                let div = note.recipient().diversifier();
-                let rseed = note.rseed().as_bytes();
-                let nf = note.nullifier(fvk).to_bytes();
-                let domain_nf = note
-                    .nullifier_domain(fvk, domain.0)
-                    .to_bytes();
-                let rho = note.rho().to_bytes();
-                connection.execute(
-                    "INSERT INTO notes
-                    (position, height, txid, value, div, rseed, nf, dnf, rho, spent)
-                    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, NULL)",
-                    params![p, height, txid, value, div.as_array(), rseed, nf, domain_nf, rho],
-                )?;
-
-                println!("{:?}", note);
-            }
-            let nf = &a.nullifier;
-            let cmx = &a.cmx;
-            s_nf.execute([nf])?;
-            s_cmx.execute([cmx])?;
-            position += 1;
-        }
-    }
-
-    Ok(position)
-}

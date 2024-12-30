@@ -5,9 +5,9 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::Connection;
 use tauri::State;
-use zcash_vote::Election;
+use zcash_vote::{db::create_schema, Election};
 
-use crate::db::{create_schema, load_election, store_election};
+use crate::db::{load_election, store_election};
 
 pub struct AppState {
     pub url: String,
