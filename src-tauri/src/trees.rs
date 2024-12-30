@@ -13,7 +13,7 @@ use crate::{db::{load_prop, store_prop}, state::AppState};
 #[tauri::command]
 pub fn compute_roots(state: State<Mutex<AppState>>) -> Result<(), String> {
     tauri_export!(state, connection, {
-        if load_prop(&connection, "cmx_root")?.is_none() {
+        if load_prop(&connection, "height")?.is_some() {
             compute_nf_root(&connection)?;
             compute_cmx_root(&connection)?;
         }

@@ -40,16 +40,20 @@ export function Overview() {
             const balance: number = await invoke('get_available_balance', {})
             setBalance(balance / 100000)
 
-            await invoke('compute_roots')
-            const nfRoot: string = await invoke('get_prop', {name: 'nf_root'})
-            setNFRoot(nfRoot)
-            const cmxRoot: string = await invoke('get_prop', {name: 'cmx_root'})
-            setCMXRoot(cmxRoot)
-
             const address: string = await invoke('get_address', {})
             setAddress(address)
+
+            await updateRoots()
         })()
     }, [])
+
+    const updateRoots = async () => {
+        await invoke('compute_roots')
+        const nfRoot: string = await invoke('get_prop', {name: 'nf_root'})
+        setNFRoot(nfRoot)
+        const cmxRoot: string = await invoke('get_prop', {name: 'cmx_root'})
+        setCMXRoot(cmxRoot)
+    }
 
     const download = () => {
         (async () => {
@@ -60,6 +64,8 @@ export function Overview() {
             await invoke('download_reference_data', {channel: channel});
             const balance: number = await invoke('get_available_balance', {})
             setBalance(balance / 100000)
+
+            await updateRoots()
         })()
     }
 
