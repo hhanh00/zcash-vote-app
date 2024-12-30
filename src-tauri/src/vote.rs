@@ -1,5 +1,9 @@
 use crate::{
-    address::VoteAddress, as_byte256, db::list_notes, decrypt::{to_fvk, to_sk}, trees::{calculate_merkle_paths, list_cmxs, list_nf_ranges}
+    address::VoteAddress,
+    as_byte256,
+    db::list_notes,
+    decrypt::{to_fvk, to_sk},
+    trees::{calculate_merkle_paths, list_cmxs, list_nf_ranges},
 };
 use anyhow::{Error, Result};
 use blake2b_simd::Params;
@@ -21,7 +25,7 @@ use pasta_curves::{
     group::ff::{Field as _, PrimeField},
     Fp, Fq,
 };
-use rand_core::{CryptoRng, OsRng, RngCore};
+use rand_core::{CryptoRng, RngCore};
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use std::{io::Write, sync::Mutex};
@@ -52,12 +56,17 @@ pub fn get_available_balance(state: State<'_, Mutex<AppState>>) -> Result<u64, S
 }
 
 #[tauri::command]
-pub fn vote(address: String, amount: u64, state: State<'_, Mutex<AppState>>) -> Result<String, String> {
+pub fn vote(
+    address: String,
+    amount: u64,
+    state: State<'_, Mutex<AppState>>,
+) -> Result<String, String> {
     tauri_export!(state, connection, {
         let sk = to_sk(&state.key)?;
         let fvk = to_fvk(&state.key)?;
         let domain = state.election.domain();
         let signature_required = state.election.signature_required;
+        let mut rng = rand_core::OsRng;
         let ballot = vote_inner(
             &connection,
             domain,
@@ -66,7 +75,7 @@ pub fn vote(address: String, amount: u64, state: State<'_, Mutex<AppState>>) -> 
             &fvk,
             &address,
             amount,
-            OsRng,
+            &mut rng,
         )?;
         let ballot = serde_json::to_string(&ballot).unwrap();
         Ok::<_, Error>(ballot)
@@ -96,7 +105,6 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
         if total_value >= amount {
             break;
         }
-        println!("{:?}", np.0);
         inputs.push(np);
         total_value += np.0.value().inner();
     }
@@ -107,11 +115,11 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
     let mut ballot_secrets = vec![];
     let mut total_rcv = ValueCommitTrapdoor::zero();
     for i in 0..n_actions {
-        let (fvk, (spend, cmx_position)) = if i < inputs.len() {
-            (fvk.clone(), inputs[i].clone())
+        let (sk, fvk, (spend, cmx_position)) = if i < inputs.len() {
+            (sk.clone(), fvk.clone(), inputs[i].clone())
         } else {
-            let (_, fvk, note) = Note::dummy(&mut rng, None);
-            (fvk, (note, 0))
+            let (sk, fvk, note) = Note::dummy(&mut rng, None);
+            (Some(sk), fvk, (note, 0))
         };
 
         let rho = spend.nullifier_domain(&fvk, domain.0);
@@ -159,7 +167,6 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
             Err(position) => position - 1,
         } & !1); // snap to even position, ie start of range
         let nf_start = nfs[nf_position];
-        let dnf = spend.nullifier_domain(&fvk, domain.0);
         ballot_secrets.push(BallotActionSecret {
             fvk: fvk.clone(),
             spend_note: spend.clone(),
@@ -191,12 +198,11 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
         let ballot_action = BallotAction {
             cv_net: cv_net.to_bytes().to_vec(),
             rk: rk.to_vec(),
-            nf: dnf.to_bytes().to_vec(),
+            nf: rho.to_bytes().to_vec(),
             cmx: cmx.to_bytes().to_vec(),
             epk: encrypted_note.epk_bytes.to_vec(),
             enc: compact_enc.to_vec(),
         };
-        println!("{}", serde_json::to_string_pretty(&ballot_action).unwrap());
         ballot_actions.push(ballot_action);
     }
 
@@ -205,6 +211,9 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
         .map(|s| s.nf_position)
         .collect::<Vec<_>>();
     let (nf_root, nf_mps) = calculate_merkle_paths(0, &nf_positions, &nfs);
+    for (a, b) in nf_mps.iter().zip(nf_positions.iter()) {
+        assert_eq!(a.position, *b);
+    }
 
     let cmx_positions = ballot_secrets
         .iter()
@@ -216,29 +225,32 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
     for (((secret, public), cmx_mp), nf_mp) in ballot_secrets
         .iter()
         .zip(ballot_actions.iter())
-        .zip(nf_mps.iter())
         .zip(cmx_mps.iter())
+        .zip(nf_mps.iter())
     {
+        let cmx = ExtractedNoteCommitment::from_bytes(&as_byte256(&public.cmx)).unwrap();
         let instance = Instance::from_parts(
             Anchor::from_bytes(cmx_root.to_repr()).unwrap(),
             secret.cv_net.clone(),
             Nullifier::from_bytes(&as_byte256(&public.nf)).unwrap(),
             secret.rk.clone(),
-            ExtractedNoteCommitment::from_bytes(&as_byte256(&public.cmx)).unwrap(),
+            cmx,
             domain.clone(),
             Anchor::from_bytes(nf_root.to_repr()).unwrap(),
         );
+        assert_eq!(
+            secret.nf_start,
+            Nullifier::from_bytes(&nfs[secret.nf_position as usize].to_repr()).unwrap()
+        );
+        assert_eq!(nf_mp.position, secret.nf_position);
+        let nf_path = nf_mp.to_orchard_merkle_tree();
         let vote_power = VotePowerInfo {
             dnf: Nullifier::from_bytes(&as_byte256(&public.nf)).unwrap(),
             nf_start: secret.nf_start,
-            nf_path: nf_mp.to_orchard_merkle_tree(),
+            nf_path,
         };
-        let spend_info = SpendInfo::new(
-            secret.fvk.clone(),
-            secret.spend_note,
-            cmx_mp.to_orchard_merkle_tree(),
-        )
-        .unwrap();
+        let cmx_path = cmx_mp.to_orchard_merkle_tree();
+        let spend_info = SpendInfo::new(secret.fvk.clone(), secret.spend_note, cmx_path).unwrap();
         let circuit = Circuit::from_action_context_unchecked(
             vote_power,
             spend_info,
@@ -247,12 +259,11 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
             secret.rcv.clone(),
         );
 
-        println!("Proving");
+        tracing::info!("Proving");
         let proof =
             Proof::<Circuit>::create(&PK, &[circuit], std::slice::from_ref(&instance), &mut rng)?;
-        // proof.verify(&VK, &[instance])?;
+        proof.verify(&VK, &[instance])?;
         let proof = proof.as_ref().to_vec();
-        println!("{}", proof.len());
         proofs.push(VoteProof(proof));
     }
 
@@ -268,14 +279,17 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
         anchors,
     };
     let sighash = ballot_data.sighash()?;
-    println!("sighash {}", hex::encode(&sighash));
 
     let sp_signatures = ballot_secrets
         .iter()
-        .map(|s| {
+        .zip(ballot_actions.iter())
+        .map(|(s, a)| {
             s.sp_signkey.as_ref().map(|sk| {
                 let signature = sk.sign(&mut rng, &sighash);
                 let signature_bytes: [u8; 64] = (&signature).into();
+                let rk = as_byte256(&a.rk);
+                let rk: VerificationKey<SpendAuth> = rk.try_into().unwrap();
+                rk.verify(&sighash, &signature).unwrap();
                 VoteSignature(signature_bytes.to_vec())
             })
         })
@@ -288,19 +302,6 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
     let binding_signature = bsk.sign(&mut rng, &sighash);
     let binding_signature: [u8; 64] = (&binding_signature).into();
     let binding_signature = binding_signature.to_vec();
-    let bvk: VerificationKey<Binding> = (&bsk).into();
-    let mut total_cv_net = ValueCommitment::derive_from_value(0);
-    for a in ballot_data.actions.iter() {
-        let cv_net = ValueCommitment::from_bytes(&as_byte256(&a.cv_net)).unwrap();
-        total_cv_net = total_cv_net + &cv_net;
-    }
-    let bvk1: [u8; 32] = bvk.try_into().unwrap();
-    let bvk2 = total_cv_net.to_bytes();
-    println!("bvk {}", hex::encode(&bvk1));
-    println!("bvk {}", hex::encode(&bvk2));
-    assert_eq!(bvk1, bvk2);
-
-    println!("Signed");
 
     let witnesses = BallotWitnesses {
         proofs,
@@ -370,7 +371,8 @@ pub struct BallotActionSecret {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct BallotData {
     pub version: u32,
-    #[serde(with = "hex")] pub domain: Vec<u8>,
+    #[serde(with = "hex")]
+    pub domain: Vec<u8>,
     pub actions: Vec<BallotAction>,
     pub anchors: BallotAnchors,
 }
@@ -424,51 +426,3 @@ lazy_static::lazy_static! {
     pub static ref VK: VerifyingKey<Circuit> = VerifyingKey::build();
 }
 
-#[cfg(test)]
-mod tests {
-    use std::path::Path;
-
-    use orchard::keys::{FullViewingKey, Scope, SpendingKey};
-    use r2d2::Pool;
-    use r2d2_sqlite::SqliteConnectionManager;
-    use rand_core::OsRng;
-    use zcash_primitives::constants::mainnet::COIN_TYPE;
-    use zcash_vote::Election;
-
-    use crate::{address::VoteAddress, state::AppState};
-
-    use super::vote_inner;
-
-    #[test]
-    fn test_vote() {
-        let home_dir = std::env::var("HOME").unwrap();
-        let db_path = Path::new(&home_dir).join("Documents").join("NSM.db");
-        let connection_manager =
-            SqliteConnectionManager::file(db_path.to_string_lossy().to_string());
-        let pool = Pool::new(connection_manager).unwrap();
-        let state = AppState {
-            url: "http://localhost:8080".to_string(),
-            election: Election::default(),
-            key: String::default(),
-            pool,
-        };
-        let domain = state.election.domain();
-        let connection = state.pool.get().unwrap();
-        let sk = SpendingKey::from_zip32_seed(&[0u8; 64], COIN_TYPE, 0).unwrap();
-        let fvk = FullViewingKey::from(&sk);
-        let address = fvk.address_at(0u64, Scope::External);
-        let address = VoteAddress(address);
-        let ballot = vote_inner(
-            &connection,
-            domain,
-            false,
-            None,
-            &fvk,
-            &address.to_string(),
-            10000,
-            OsRng,
-        )
-        .unwrap();
-        println!("{}", serde_json::to_string_pretty(&ballot).unwrap());
-    }
-}

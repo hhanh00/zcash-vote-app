@@ -1,16 +1,23 @@
-use anyhow::{Error, Result};
+use anyhow::Result;
 use orchard::{
-    note::{ExtractedNoteCommitment, Nullifier}, primitives::redpallas::{Binding, Signature, SpendAuth, VerificationKey}, value::{ValueCommitment, ValueSum}, vote::{circuit::Instance, proof::Proof, BallotCircuit as Circuit, ElectionDomain}, Anchor
+    note::{ExtractedNoteCommitment, Nullifier},
+    primitives::redpallas::{Binding, Signature, SpendAuth, VerificationKey},
+    value::ValueCommitment,
+    vote::{circuit::Instance, proof::Proof, BallotCircuit as Circuit, ElectionDomain},
+    Anchor,
 };
 use std::sync::Mutex;
 
 use bip0039::Mnemonic;
-use rusqlite::Connection;
 use tauri::State;
 use zcash_address::unified::Encoding;
 use zcash_vote::Election;
 
-use crate::{as_byte256, is_ok, state::AppState, vote::{Ballot, BallotWitnesses, VK}};
+use crate::{
+    as_byte256, is_ok,
+    state::AppState,
+    vote::{Ballot, BallotWitnesses, VK},
+};
 
 #[tauri::command]
 pub fn validate_key(key: String) -> Result<bool, ()> {
@@ -24,13 +31,12 @@ pub fn validate_key(key: String) -> Result<bool, ()> {
 }
 
 pub fn validate_ballot(ballot: String, state: State<Mutex<AppState>>) -> Result<(), String> {
-    tauri_export!(state, connection, {
-        validate_ballot_inner(&connection, &ballot, &state.election)
+    tauri_export!(state, _connection, {
+        validate_ballot_inner(&ballot, &state.election)
     })
 }
 
 pub fn validate_ballot_inner(
-    connection: &Connection,
     ballot: &str,
     election: &Election,
 ) -> Result<()> {
@@ -38,7 +44,7 @@ pub fn validate_ballot_inner(
     let Ballot { data, witnesses } = ballot;
     let sighash = data.sighash()?;
 
-    println!("Verify spending signatures if needed");
+    tracing::info!("Verify spending signatures if needed");
     if let Some(sp_signatures) = witnesses.sp_signatures {
         for (signature, action) in sp_signatures.into_iter().zip(data.actions.iter()) {
             let signature: [u8; 64] = signature.0.try_into().unwrap();
@@ -51,7 +57,7 @@ pub fn validate_ballot_inner(
         anyhow::bail!("Signatures missing");
     }
 
-    println!("Verify binding signature");
+    tracing::info!("Verify binding signature");
     let mut total_cv = ValueCommitment::derive_from_value(0);
     for action in data.actions.iter() {
         let cv_net = as_byte256(&action.cv_net);
@@ -65,7 +71,7 @@ pub fn validate_ballot_inner(
 
     let BallotWitnesses { proofs, .. } = witnesses;
 
-    println!("Verify ZKP");
+    tracing::info!("Verify ZKP");
     for (proof, action) in proofs.into_iter().zip(data.actions.iter()) {
         let proof: Proof<Circuit> = Proof::new(proof.0);
         let domain = election.domain().0;
@@ -94,34 +100,4 @@ pub fn validate_ballot_inner(
     Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use anyhow::Result;
-    use std::{fs, io::Read, path::Path};
-    use zcash_vote::Election;
 
-    use r2d2::Pool;
-    use r2d2_sqlite::SqliteConnectionManager;
-
-    use crate::db::load_prop;
-
-    use super::validate_ballot_inner;
-
-    #[test]
-    fn test_ballot_validation() -> Result<()> {
-        let home_dir = std::env::var("HOME").unwrap();
-        let db_path = Path::new(&home_dir).join("Documents").join("NSM.db");
-        let connection_manager =
-            SqliteConnectionManager::file(db_path.to_string_lossy().to_string());
-        let pool = Pool::new(connection_manager).unwrap();
-        let connection = pool.get()?;
-        let election = load_prop(&connection, "election")?.unwrap();
-        let election: Election = serde_json::from_str(&election)?;
-
-        let mut ballot = String::new();
-        fs::File::open("./src/ballot.json")?.read_to_string(&mut ballot)?;
-        validate_ballot_inner(&connection, &ballot, &election)?;
-
-        Ok(())
-    }
-}

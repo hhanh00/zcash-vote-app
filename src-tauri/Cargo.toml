@@ -46,6 +46,10 @@ blake2b_simd = "1.0.2"
 bech32 = "0.9.1"
 lazy_static = "1.5.0"
 subtle = "2.4.1"
+tracing = "0.1.41"
+
+[dev-dependencies]
+rand_chacha = "0.3.1"
 
 [patch.crates-io]
 #orchard = {path = "../../ywallet/orchard"}

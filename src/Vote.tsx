@@ -64,6 +64,7 @@ export function Vote() {
                             placeholder="Enter a number of votes"
                             required
                             {...field}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
                         />} />
                 </div>
 
