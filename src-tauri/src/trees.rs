@@ -8,7 +8,7 @@ use orchard::tree::{MerkleHashOrchard, MerklePath as OrchardMerklePath};
 use tauri::State;
 use zcash_vote::DEPTH;
 
-use crate::{db::{get_prop, load_prop, store_prop}, state::AppState};
+use crate::{db::{load_prop, store_prop}, state::AppState};
 
 #[tauri::command]
 pub fn compute_roots(state: State<Mutex<AppState>>) -> Result<(), String> {
@@ -112,6 +112,9 @@ pub fn calculate_merkle_paths(
     for i in 0..32 {
         if i == 0 {
             layer.extend(hashes);
+            if layer.is_empty() {
+                layer.push(er);
+            }
             if layer.len() & 1 == 1 {
                 layer.push(er);
             }
