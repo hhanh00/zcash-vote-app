@@ -2,8 +2,6 @@ use crate::{
     address::VoteAddress,
     as_byte256,
     db::list_notes,
-    decrypt::{to_fvk, to_sk},
-    trees::{calculate_merkle_paths, list_cmxs, list_nf_ranges},
 };
 use anyhow::{Error, Result};
 use orchard::{
@@ -16,7 +14,7 @@ use orchard::{
     vote::{
         circuit::{Instance, VotePowerInfo},
         proof::Proof,
-        BallotCircuit as Circuit, ElectionDomain, ProvingKey, VerifyingKey,
+        BallotCircuit as Circuit, ElectionDomain,
     },
     Anchor, Note,
 };
@@ -26,7 +24,7 @@ use pasta_curves::{
 };
 use rand_core::{CryptoRng, RngCore};
 use rusqlite::Connection;
-use zcash_vote::{ballot::{Ballot, BallotAction, BallotActionSecret, BallotAnchors, BallotData, BallotWitnesses, VoteProof, VoteSignature}, db::load_prop};
+use zcash_vote::{ballot::{Ballot, BallotAction, BallotActionSecret, BallotAnchors, BallotData, BallotWitnesses, VoteProof, VoteSignature}, db::load_prop, decrypt::{to_fvk, to_sk}, trees::{calculate_merkle_paths, list_cmxs, list_nf_ranges}, validate::{PK, VK}};
 use std::sync::Mutex;
 use zcash_note_encryption::{COMPACT_NOTE_SIZE, OUT_CIPHERTEXT_SIZE};
 
@@ -314,9 +312,4 @@ pub fn vote_inner<R: RngCore + CryptoRng>(
     };
 
     Ok(ballot)
-}
-
-lazy_static::lazy_static! {
-    pub static ref PK: ProvingKey<Circuit> = ProvingKey::build();
-    pub static ref VK: VerifyingKey<Circuit> = VerifyingKey::build();
 }

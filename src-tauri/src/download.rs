@@ -2,11 +2,9 @@ use std::sync::Mutex;
 
 use anyhow::{Error, Result};
 use tauri::{ipc::Channel, State};
-use zcash_vote::db::{load_prop, store_prop};
+use zcash_vote::{db::{load_prop, store_prop}, decrypt::to_fvk};
 
-use crate::{
-    decrypt::to_fvk, state::AppState
-};
+use crate::state::AppState;
 
 #[tauri::command]
 pub async fn download_reference_data(

@@ -20,7 +20,6 @@ pub mod state;
 pub mod db;
 pub mod validate;
 pub mod download;
-pub mod decrypt;
 pub mod trees;
 pub mod address;
 pub mod vote;

@@ -6694,7 +6694,7 @@ dependencies = [
 [[package]]
 name = "zcash-vote"
 version = "0.1.0"
-source = "git+https://github.com/hhanh00/zcash-vote.git?rev=8ca5958#8ca5958f020ee44d603df41f49355e7f15572ee2"
+source = "git+https://github.com/hhanh00/zcash-vote.git?rev=82b6c62#82b6c626962362e8451e546a1bb412183fa6a8ef"
 dependencies = [
  "anyhow",
  "bip0039",
@@ -6718,6 +6718,7 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "subtle",
  "thiserror 1.0.69",
  "tokio",
  "tonic",
