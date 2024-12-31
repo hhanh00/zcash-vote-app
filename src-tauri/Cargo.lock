@@ -6694,9 +6694,10 @@ dependencies = [
 [[package]]
 name = "zcash-vote"
 version = "0.1.0"
-source = "git+https://github.com/hhanh00/zcash-vote.git?rev=82b6c62#82b6c626962362e8451e546a1bb412183fa6a8ef"
+source = "git+https://github.com/hhanh00/zcash-vote.git?rev=05c751e#05c751ef5c6934816ce163250f352a932b3a79ed"
 dependencies = [
  "anyhow",
+ "bech32 0.9.1",
  "bip0039",
  "blake2b_simd",
  "dotenv",
@@ -6715,6 +6716,7 @@ dependencies = [
  "r2d2",
  "r2d2_sqlite",
  "rand 0.8.5",
+ "rand_core 0.6.4",
  "rusqlite",
  "serde",
  "serde_json",
