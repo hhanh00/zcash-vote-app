@@ -4,8 +4,9 @@ use anyhow::{Error, Result};
 use orchard::{keys::Scope, Address};
 use bech32::{FromBase32, ToBase32};
 use tauri::State;
+use zcash_vote::decrypt::to_fvk;
 
-use crate::{decrypt::to_fvk, state::AppState};
+use crate::state::AppState;
 
 pub struct VoteAddress(pub Address);
 
