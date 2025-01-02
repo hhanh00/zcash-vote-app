@@ -22,7 +22,9 @@ pub fn validate_key(key: String) -> Result<bool, ()> {
 #[tauri::command]
 pub fn validate_ballot(ballot: String, state: State<Mutex<AppState>>) -> Result<(), String> {
     tauri_export!(state, _connection, {
-        zcash_vote::validate::validate_ballot(&ballot, &state.election)
+        let election = &state.election;
+        let ballot = serde_json::from_str::<Ballot>(&ballot)?;
+        zcash_vote::validate::validate_ballot(ballot, election.signature_required)
     })
 }
 
