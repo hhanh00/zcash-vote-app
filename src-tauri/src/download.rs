@@ -20,7 +20,8 @@ pub async fn download_reference_data(
             (connection, election, fvk)
         };
         let lwd_url = load_prop(&connection, "lwd")?.unwrap_or("https://zec.rocks".to_string());
-        let (connection, h) = zcash_vote::download::download_reference_data(connection, election, fvk, 
+        let (connection, h) =
+        zcash_vote::download::download_reference_data(connection, 0, &election, Some(fvk),
             &lwd_url, move |h| {
             let _ = channel.send(h);
         }).await?;
