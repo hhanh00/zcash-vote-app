@@ -1,17 +1,7 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
-import { Accordion, Alert, Button, Card, List, Progress, Table } from "flowbite-react"
+import { Accordion, Alert, Button, Card, List, Progress } from "flowbite-react"
 import { useEffect, useState } from "react";
 import { SetElectionMessage } from "./SetElectionMessage";
-
-type Answer = {
-    answer: string;
-    amount: number;
-}
-
-type Candidate = {
-    address: string;
-    choice: string;
-}
 
 export function Overview() {
     const [election, setElection] = useState<Election | undefined>()
@@ -44,8 +34,6 @@ export function Overview() {
             await invoke('download_reference_data', {channel: channel});
             const balance: number = await invoke('get_available_balance', {})
             setBalance(balance / 100000)
-
-            await updateRoots()
         })()
     }
 
