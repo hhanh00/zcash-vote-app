@@ -1,9 +1,9 @@
 use std::sync::Mutex;
 
 use anyhow::{Error, Result};
-use rusqlite::Connection;
+use rusqlite::{params, Connection};
 use tauri::State;
-use zcash_vote::{db::{load_prop, store_prop}, Election};
+use zcash_vote::{ballot::Ballot, db::{load_prop, store_prop}, Election};
 
 use crate::state::AppState;
 
@@ -36,4 +36,13 @@ pub fn get_prop(name: String, state: State<Mutex<AppState>>) -> Result<Option<St
     tauri_export!(state, connection, {
         Ok::<_, Error>(load_prop(&connection, &name)?)
     })
+}
+
+pub fn store_ballot(connection: &Connection, height: u32, ballot: &Ballot) -> Result<()> {
+    let hash = ballot.data.sighash()?;
+    let ballot = serde_json::to_string(ballot)?;
+    connection.execute(
+        "INSERT INTO ballots(election, height, hash, data)
+        VALUES (?1, ?2, ?3, ?4)", params![0, height, &hash, &ballot])?;
+    Ok(())
 }
