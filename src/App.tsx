@@ -6,7 +6,6 @@ import {
   Navigate,
 } from 'react-router-dom'
 import './App.css'
-import axios from 'axios'
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { Overview } from './Overview'
 import { Button, Label, Modal, TextInput } from 'flowbite-react'
@@ -14,6 +13,7 @@ import { Controller, SubmitHandler, useForm } from 'react-hook-form'
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { Vote } from './Vote'
+import { WIP } from './WIP'
 
 type FormValues = {
   url: string;
@@ -43,8 +43,10 @@ function Election() {
     if (url == null)
       return
 
-    const rep = await axios.get(data.url, { responseType: 'json' })
-    const election = rep.data
+    const rep: string = await invoke('http_get', { url: data.url })
+    const election: Election = JSON.parse(rep)
+    // const rep = await axios.get(data.url, { responseType: 'json' })
+    // const election = rep.data
 
     console.log(election)
     await invoke('set_election', {url: data.url, election: election, key: data.key})
@@ -83,6 +85,7 @@ function Election() {
       <a href='/overview' className='text-gray-400'>Overview</a>
       <a href='/history' className='text-gray-400'>History</a>
       <a href='/vote' className='px-4 py-2 bg-blue-600 rounded hover:bg-blue-700'>Vote</a>
+      <a href='/wip' className='px-4 py-2 bg-blue-600 rounded hover:bg-blue-700'>WIP</a>
     </nav>
 
     <div className='flex flex-grow items-center justify-center'>
@@ -149,8 +152,7 @@ function Election() {
 async function validateURL(url: string) {
   console.log(`validate ${url}`)
   try {
-    const rep = await axios.get(url, { responseType: 'json' })
-    if (rep.status != 200) return rep.statusText
+    await invoke('http_get', { url: url })
   }
   catch {
     return 'Invalid URL'
@@ -173,6 +175,7 @@ function App() {
           <Route path='/home' element={<Election />} />
           <Route path='/overview' element={<Overview />} />
           <Route path='/vote' element={<Vote />} />
+          <Route path='/wip' element={<WIP />} />
         </Routes>
       </div>
     </Router>

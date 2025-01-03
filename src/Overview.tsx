@@ -13,7 +13,7 @@ type Candidate = {
 }
 
 export function Overview() {
-    const [election, setElection] = useState<any>()
+    const [election, setElection] = useState<Election | undefined>()
     const [votes, setVotes] = useState<Answer[] | undefined>()
     const [height, setHeight] = useState<number | null | undefined>()
     const [balance, setBalance] = useState<number | undefined>()
@@ -23,7 +23,7 @@ export function Overview() {
 
     useEffect(() => {
         (async () => {
-            const election: any = await invoke('get_election')
+            const election: Election = await invoke('get_election')
             console.log(election)
             setElection(election)
             const votes: Answer[] = election.candidates.map((a: Candidate) => {
@@ -43,7 +43,7 @@ export function Overview() {
             const address: string = await invoke('get_address', {})
             setAddress(address)
 
-            await updateRoots()
+            // await updateRoots()
         })()
     }, [])
 
@@ -71,7 +71,7 @@ export function Overview() {
 
     if (!votes) return <div/>
 
-    const progressPct: number | undefined = height && election && (
+    const progressPct: number | null | undefined = height && election && (
         100 * (height - election.start_height) / (election.end_height - election.start_height)
     );
 
@@ -81,8 +81,9 @@ export function Overview() {
             <a href="/overview">Overview</a>
             <a href="/history" className="hover:text-gray-400">History</a>
             <a href='/vote' className='px-4 py-2 bg-blue-600 rounded hover:bg-blue-700'>Vote</a>
+            <a href='/wip'>WIP</a>
         </nav>
-        <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        {election && <div className="flex items-center justify-center min-h-screen bg-gray-100">
             <Card className="max-w-md">
                 <h2 className="text-xl font-bold text-gray-800">{election.name}</h2>
                 <p className="text-gray-600">
@@ -115,10 +116,6 @@ export function Overview() {
                                     <span>Registration End</span>
                                     <span>{election.end_height}</span>
                                 </List.Item>
-                                <List.Item className="flex justify-between">
-                                    <span>Voting End</span>
-                                    <span>{election.close_height}</span>
-                                </List.Item>
                             </List>
                         </Accordion.Content>
                     </Accordion.Panel>
@@ -138,7 +135,7 @@ export function Overview() {
                         Voting begins immediately after the registration period.</span>
                 </Alert>
             </Card>
-        </div>
+        </div>}
 
         <div>{JSON.stringify(election)}</div>
     </>
