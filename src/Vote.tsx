@@ -1,77 +1,83 @@
-import { invoke } from "@tauri-apps/api/core";
-import { Button, Label, TextInput } from "flowbite-react";
-import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
-
-type Vote = {
-    address: string;
-    amount: number;
-}
+import { invoke } from "@tauri-apps/api/core"
+import { useEffect, useState } from "react"
+import { SetElectionMessage } from "./SetElectionMessage"
+import { Button, Card, Label, Radio, TextInput } from "flowbite-react"
+import { Controller, SubmitHandler, useForm } from "react-hook-form"
 
 export function Vote() {
+    const [election, setElection] = useState<Election | undefined>()
+
+    useEffect(() => {
+        (async () => {
+            const election: Election = await invoke('get_election')
+            setElection(election)
+        })()
+    }, [])
+
     const { control, handleSubmit } = useForm(
         {
             defaultValues: {
-                address: 'zvote1tvdxsx8xau9z8qy9rk5mjkl7zn3vmtw9zcg7rzsrfuzl05aff296ywz2348yu7q27jg2cfewz3a',
-                amount: 1,
+                address: '',
+                amount: 0,
             },
         }
     );
-    const [ballot, setBallot] = useState<string | undefined>();
 
-    const onVote = (data: Vote) => {
-        console.log(data);
+    const onSubmit: SubmitHandler<Vote> = (vote) => {
         (async () => {
-            data.amount = Math.floor(data.amount * 100000)
-            const ballot: string = await invoke('vote', data)
-            console.log(ballot)
-            setBallot(ballot)
+            vote.amount = Math.floor(vote.amount * 100000)
+            await invoke('vote', vote)
         })()
     }
 
+    if (!election) return <SetElectionMessage />
 
-    return <>
-        <nav className="flex items-center justify-between px-8 py-2 bg-gray-800 text-white">
-            <a href="/home" className="hover:text-gray-400">Election</a>
-            <a href="/overview" className="hover:text-gray-400">Overview</a>
-            <a href="/history" className="hover:text-gray-400">History</a>
-            <a href='/vote' className='px-4 py-2 bg-blue-600 rounded hover:bg-blue-700'>Vote</a>
-        </nav>
-        <div className="flex max-w justify-center">
-            <form onSubmit={handleSubmit(onVote)} className=" bg-gray-100 flex flex-col gap-4 p-4 w-5/6">
-                <div>
-                    <Label htmlFor="address" value="Address" />
-                    <Controller 
-                    name = "address"
-                    control={control} 
-                    render = {({field}) => <TextInput
-                        id="address"
-                        type="text"
-                        placeholder="Vote for..."
-                        required
-                        {...field}
-                    />} />
+    return (
+        <form className="flex justify-center items-center h-screen bg-gray-100" onSubmit={handleSubmit(onSubmit)}>
+            <Card className="w-full max-w-md">
+                <h2 className="text-2xl font-bold mb-4 text-center">Vote</h2>
+
+                <div className="flex flex-col gap-4">
+                    <Controller control={control}
+                        name="address"
+                        rules={{ required: "Please select an option" }}
+                        render={({ field, fieldState }) => (
+                            <fieldset>
+                                <legend className="text-lg font-medium mb-2">Make your selection</legend>
+                                <div className="flex flex-col gap-2">
+                                    {election.candidates.map((c) =>
+                                        <div key={c.address} className="flex items-center gap-2">
+                                            <Radio id={c.address} name="option" value={c.address}
+                                                onChange={() => field.onChange(c.address)} />
+                                            <Label htmlFor={c.address}>{c.choice}</Label>
+                                        </div>
+                                    )}
+                                </div>
+                                {fieldState.error && (
+                                    <span className="text-red-500">{fieldState.error.message}</span>
+                                )}
+                            </fieldset>
+                        )} />
+
+                    <Controller control={control}
+                        name="amount"
+                        render={({ field }) =>
+                            <div>
+                                <Label htmlFor="amount" value="Enter a number of votes" />
+                                <TextInput
+                                    id="number"
+                                    type="number"
+                                    placeholder="Enter a number"
+                                    {...field}
+                                    onChange={(e) => field.onChange(Number(e.target.value))}
+                                    required
+                                />
+                            </div>
+                        } />
+
+                    <Button type="submit">Vote</Button>
                 </div>
-
-                <div>
-                    <Label htmlFor="amount" value="Amount" />
-                    <Controller
-                    name = "amount"
-                    control = {control}
-                    render = {({field}) => 
-                        <TextInput
-                            id="amount"
-                            type="number"
-                            placeholder="Enter a number of votes"
-                            required
-                            {...field}
-                            onChange={(e) => field.onChange(Number(e.target.value))}
-                        />} />
-                </div>
-
-                <Button type="submit">Vote</Button>
-            </form>
-            {ballot && <textarea>{ballot}</textarea>}
-        </div>
-    </>
+            </Card>
+        </form>
+    )
 }

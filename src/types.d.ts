@@ -21,3 +21,8 @@ type Election = {
     nf: string;
     cmx_frontier: Frontier;
 }
+
+type Vote = {
+    address: string;
+    amount: number;
+}

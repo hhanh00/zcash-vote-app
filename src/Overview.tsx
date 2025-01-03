@@ -1,6 +1,7 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { Accordion, Alert, Button, Card, List, Progress, Table } from "flowbite-react"
 import { useEffect, useState } from "react";
+import { SetElectionMessage } from "./SetElectionMessage";
 
 type Answer = {
     answer: string;
@@ -24,8 +25,12 @@ export function Overview() {
     useEffect(() => {
         (async () => {
             const election: Election = await invoke('get_election')
-            console.log(election)
             setElection(election)
+
+            console.log(election)
+            if (!election) return
+
+            await invoke('sync')
             const votes: Answer[] = election.candidates.map((a: Candidate) => {
                 return ({
                     answer: a.choice,
@@ -42,8 +47,6 @@ export function Overview() {
 
             const address: string = await invoke('get_address', {})
             setAddress(address)
-
-            // await updateRoots()
         })()
     }, [])
 
@@ -69,21 +72,15 @@ export function Overview() {
         })()
     }
 
-    if (!votes) return <div/>
+    if (election == undefined || election.id == '') return <SetElectionMessage />
+    if (votes == undefined) return <Alert>Could not contact server!</Alert>
 
     const progressPct: number | null | undefined = height && election && (
         100 * (height - election.start_height) / (election.end_height - election.start_height)
     );
 
-    return <>
-        <nav className="flex items-center justify-between px-8 py-2 bg-gray-800 text-white">
-            <a href="/home" className="hover:text-gray-400">Election</a>
-            <a href="/overview">Overview</a>
-            <a href="/history" className="hover:text-gray-400">History</a>
-            <a href='/vote' className='px-4 py-2 bg-blue-600 rounded hover:bg-blue-700'>Vote</a>
-            <a href='/wip'>WIP</a>
-        </nav>
-        {election && <div className="flex items-center justify-center min-h-screen bg-gray-100">
+    return (
+        <div className="flex items-center justify-center min-h-screen bg-gray-100">
             <Card className="max-w-md">
                 <h2 className="text-xl font-bold text-gray-800">{election.name}</h2>
                 <p className="text-gray-600">
@@ -135,8 +132,6 @@ export function Overview() {
                         Voting begins immediately after the registration period.</span>
                 </Alert>
             </Card>
-        </div>}
-
-        <div>{JSON.stringify(election)}</div>
-    </>
+        </div>
+    )
 }
