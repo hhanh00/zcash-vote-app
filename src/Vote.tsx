@@ -13,7 +13,7 @@ export function Vote() {
         {
             defaultValues: {
                 address: 'zvote1tvdxsx8xau9z8qy9rk5mjkl7zn3vmtw9zcg7rzsrfuzl05aff296ywz2348yu7q27jg2cfewz3a',
-                amount: 100000,
+                amount: 1,
             },
         }
     );
@@ -22,6 +22,7 @@ export function Vote() {
     const onVote = (data: Vote) => {
         console.log(data);
         (async () => {
+            data.amount = Math.floor(data.amount * 100000)
             const ballot: string = await invoke('vote', data)
             console.log(ballot)
             setBallot(ballot)

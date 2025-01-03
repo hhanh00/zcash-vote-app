@@ -2,9 +2,9 @@ use std::sync::Mutex;
 
 use anyhow::{Error, Result};
 use tauri::{ipc::Channel, State};
-use zcash_vote::{ballot::Ballot, db::{load_prop, store_prop}, decrypt::to_fvk};
+use zcash_vote::{ballot::Ballot, db::{load_prop, store_prop}, decrypt::to_fvk, Election};
 
-use crate::{db::store_ballot, state::AppState};
+use crate::{db::store_ballot, state::AppState, validate::handle_ballot};
 
 #[tauri::command]
 pub async fn http_get(url: String) -> Result<String, String> {
@@ -52,13 +52,19 @@ pub async fn sync(state: State<'_, Mutex<AppState>>) -> Result<(), String> {
         let n = reqwest::get(url).await?.text().await?;
         let n = n.parse::<u32>()?;
         let connection = pool.get()?;
+        let election = load_prop(&connection, "election")?.unwrap();
+        let election = serde_json::from_str::<Election>(&election)?;
         let c = connection.query_row("SELECT COUNT(*) FROM ballots", [], |r| r.get::<_, u32>(0))?;
         if c < n {
             for i in c..n {
                 let url = format!("{}/ballot/height/{}", base_url, i + 1);
                 let ballot = reqwest::get(url).await?.text().await?;
                 let ballot = serde_json::from_str::<Ballot>(&ballot)?;
-                store_ballot(&connection, i + 1, &ballot)?;
+                let mut connection = pool.get()?;
+                let transaction = connection.transaction()?;
+                handle_ballot(&transaction, &election, i + 1, &ballot)?;
+                store_ballot(&transaction, i + 1, &ballot)?;
+                transaction.commit()?;
             }
         }
 

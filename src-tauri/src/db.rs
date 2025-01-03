@@ -46,3 +46,10 @@ pub fn store_ballot(connection: &Connection, height: u32, ballot: &Ballot) -> Re
         VALUES (?1, ?2, ?3, ?4)", params![0, height, &hash, &ballot])?;
     Ok(())
 }
+
+pub fn mark_spent(connection: &Connection, height: u32, dnf: &[u8]) -> Result<()> {
+    connection.execute(
+        "UPDATE notes SET spent = ?1 WHERE dnf = ?2",
+        params![height, dnf])?;
+    Ok(())
+}

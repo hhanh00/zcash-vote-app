@@ -24,7 +24,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri-plugin-dialog = "2"
 
-zcash-vote = {git = "https://github.com/hhanh00/zcash-vote.git", rev="ca7da82"}
+zcash-vote = {git = "https://github.com/hhanh00/zcash-vote.git", rev="575bf31"}
 orchard = "0.3.0"
 rusqlite = "0.29.0"
 r2d2 = "0.8.10"
@@ -60,3 +60,7 @@ halo2_proofs = { git = "https://github.com/zcash/halo2.git", rev = "642924d61430
 
 #[patch."https://github.com/hhanh00/zcash-vote.git"]
 #zcash-vote = {path = "../../zwallet/native/zcash-vote"}
+
+[profile.dev]
+opt-level = 3
+debug = true
