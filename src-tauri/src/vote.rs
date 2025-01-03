@@ -1,5 +1,6 @@
 use anyhow::{Error, Result};
-use zcash_vote::{db::load_prop, decrypt::{to_fvk, to_sk}};
+use orchard::keys::{PreparedIncomingViewingKey, Scope};
+use zcash_vote::{db::load_prop, decrypt::{to_fvk, to_sk}, validate::try_decrypt_ballot};
 use std::sync::Mutex;
 use tauri::State;
 use crate::state::AppState;
@@ -46,6 +47,14 @@ pub fn vote(
             amount,
             &mut rng,
         )?;
+
+        let pivk = PreparedIncomingViewingKey::new(&fvk.to_ivk(Scope::External));
+        for action in ballot.data.actions.iter() {
+            if let Some(note) = try_decrypt_ballot(&pivk, action)? {
+                println!(">> {:?}", note);
+            }
+        }
+
         let ballot = serde_json::to_string(&ballot).unwrap();
         Ok::<_, Error>(ballot)
     })

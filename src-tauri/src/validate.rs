@@ -1,12 +1,14 @@
 use anyhow::Result;
+use orchard::keys::{PreparedIncomingViewingKey, Scope};
+use rusqlite::Connection;
 use std::sync::Mutex;
 
 use bip0039::Mnemonic;
 use tauri::State;
 use zcash_address::unified::Encoding;
-use zcash_vote::ballot::Ballot;
+use zcash_vote::{ballot::Ballot, db::{load_prop, store_cmx, store_note}, decrypt::to_fvk, validate::try_decrypt_ballot, Election};
 
-use crate::state::AppState;
+use crate::{db::mark_spent, state::AppState};
 
 #[tauri::command]
 pub fn validate_key(key: String) -> Result<bool, ()> {
@@ -28,30 +30,23 @@ pub fn validate_ballot(ballot: String, state: State<Mutex<AppState>>) -> Result<
     })
 }
 
-pub fn handle_ballot(_ballot: &Ballot) -> Result<()> {
-    // verify ballot
-    // try decrypt outputs
-    // detect & mark spends
-    // update height
-    // store cmx
-    // calcualte & store cmx_root
-    Ok(())
-}
+pub fn handle_ballot(connection: &Connection, election: &Election, height: u32, ballot: &Ballot) -> Result<()> {
+    let key = load_prop(connection, "key")?.ok_or(anyhow::anyhow!("no key"))?;
+    let fvk = to_fvk(&key)?;
+    let pivk = PreparedIncomingViewingKey::new(&fvk.to_ivk(Scope::External));
 
-#[test]
-pub fn test_handle_ballot() -> Result<()> {
-    let home_dir = std::env::var("HOME").unwrap();
-    let db_path = std::path::Path::new(&home_dir).join("Documents").join("NSM.db");
-    let connection_manager = r2d2_sqlite::SqliteConnectionManager::file(db_path.to_string_lossy().to_string());
-    let pool = r2d2::Pool::new(connection_manager).unwrap();
-    let connection = pool.get()?;
-    let election = zcash_vote::db::load_prop(&connection, "election")?.unwrap();
-    let _election: zcash_vote::Election = serde_json::from_str(&election)?;
-    let mut ballot = String::new();
-    std::io::Read::read_to_string(&mut std::fs::File::open("./src/ballot.json")?, &mut ballot)?;
-    let ballot: Ballot = serde_json::from_str(&ballot)?;
+    let position = connection.query_row(
+        "SELECT COUNT(*) FROM cmxs", [], |r| r.get::<_, u32>(0))?;
+    let txid = ballot.data.sighash()?;
 
-    handle_ballot(&ballot)?;
-
+    for (i, action) in ballot.data.actions.iter().enumerate() {
+        mark_spent(connection, height, &action.nf)?;
+        if let Some(note) = try_decrypt_ballot(&pivk, action)? {
+            println!("{:?}", note);
+            store_note(connection, 0, election.domain().0,
+                &fvk, height, position + i as u32, &txid, &note)?;
+        }
+        store_cmx(connection, 0, &action.cmx)?;
+    }
     Ok(())
 }
