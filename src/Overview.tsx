@@ -3,19 +3,15 @@ import { Accordion, Alert, Button, Card, List, Progress } from "flowbite-react"
 import { useEffect, useState } from "react";
 import { SetElectionMessage } from "./SetElectionMessage";
 
-export function Overview() {
-    const [election, setElection] = useState<Election | undefined>()
+export const Overview: React.FC<ElectionProps> = ({election}) => {
     const [height, setHeight] = useState<number | null | undefined>()
     const [balance, setBalance] = useState<number | undefined>()
     useEffect(() => {
         (async () => {
-            const election: Election = await invoke('get_election')
-            setElection(election)
-
-            console.log(election)
-            if (!election) return
-
-            await invoke('sync')
+            try {
+                await invoke('sync')
+            }
+            catch {}
 
             const height: number | null = await invoke('get_sync_height', {})
             setHeight(height)

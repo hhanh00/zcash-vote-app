@@ -26,3 +26,7 @@ type Vote = {
     address: string;
     amount: number;
 }
+
+declare interface ElectionProps {
+    election: Election;
+}
