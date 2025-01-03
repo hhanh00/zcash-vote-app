@@ -4,14 +4,11 @@ import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { SetElectionMessage } from "./SetElectionMessage";
 
-export function Delegate() {
-    const [election, setElection] = useState<Election | undefined>()
+export const Delegate: React.FC<ElectionProps> = ({election}) => {
     const [address, setAddress] = useState<string | undefined>()
 
     useEffect(() => {
         (async () => {
-            const election: Election = await invoke('get_election')
-            setElection(election)
             const address: string = await invoke('get_address', {})
             setAddress(address)
         })()
@@ -32,7 +29,6 @@ export function Delegate() {
             await invoke('vote', delegation)
         })()
     }
-
 
     if (election == undefined || election.id == '') return <SetElectionMessage />
     

@@ -1,19 +1,9 @@
 import { invoke } from "@tauri-apps/api/core"
-import { useEffect, useState } from "react"
 import { SetElectionMessage } from "./SetElectionMessage"
 import { Button, Card, Label, Radio, TextInput } from "flowbite-react"
 import { Controller, SubmitHandler, useForm } from "react-hook-form"
 
-export function Vote() {
-    const [election, setElection] = useState<Election | undefined>()
-
-    useEffect(() => {
-        (async () => {
-            const election: Election = await invoke('get_election')
-            setElection(election)
-        })()
-    }, [])
-
+export const Vote: React.FC<ElectionProps> = ({election}) => {
     const { control, handleSubmit } = useForm(
         {
             defaultValues: {
