@@ -53,3 +53,10 @@ pub fn mark_spent(connection: &Connection, height: u32, dnf: &[u8]) -> Result<()
         params![height, dnf])?;
     Ok(())
 }
+
+pub fn store_vote(connection: &Connection, address: &str, amount: u64) -> Result<()> {
+    connection.execute(
+        "INSERT INTO votes(address, amount)
+        VALUES (?1, ?2)", params![address, amount])?;
+    Ok(())
+}
