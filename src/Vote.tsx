@@ -30,7 +30,7 @@ export function Vote() {
         })()
     }
 
-    if (!election) return <SetElectionMessage />
+    if (election == undefined || election.id == "") return <SetElectionMessage />
 
     return (
         <form className="flex justify-center items-center h-screen bg-gray-100" onSubmit={handleSubmit(onSubmit)}>
@@ -42,7 +42,7 @@ export function Vote() {
                         name="address"
                         rules={{ required: "Please select an option" }}
                         render={({ field, fieldState }) => (
-                            <fieldset>
+                            <div>
                                 <legend className="text-lg font-medium mb-2">Make your selection</legend>
                                 <div className="flex flex-col gap-2">
                                     {election.candidates.map((c) =>
@@ -56,7 +56,7 @@ export function Vote() {
                                 {fieldState.error && (
                                     <span className="text-red-500">{fieldState.error.message}</span>
                                 )}
-                            </fieldset>
+                            </div>
                         )} />
 
                     <Controller control={control}

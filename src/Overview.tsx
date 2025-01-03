@@ -15,13 +15,8 @@ type Candidate = {
 
 export function Overview() {
     const [election, setElection] = useState<Election | undefined>()
-    const [votes, setVotes] = useState<Answer[] | undefined>()
     const [height, setHeight] = useState<number | null | undefined>()
     const [balance, setBalance] = useState<number | undefined>()
-    const [nfRoot, setNFRoot] = useState<string | undefined>()
-    const [cmxRoot, setCMXRoot] = useState<string | undefined>()
-    const [address, setAddress] = useState<string | undefined>()
-
     useEffect(() => {
         (async () => {
             const election: Election = await invoke('get_election')
@@ -31,32 +26,14 @@ export function Overview() {
             if (!election) return
 
             await invoke('sync')
-            const votes: Answer[] = election.candidates.map((a: Candidate) => {
-                return ({
-                    answer: a.choice,
-                    amount: 0,
-                })
-            })
-            setVotes(votes)
 
             const height: number | null = await invoke('get_sync_height', {})
             setHeight(height)
 
             const balance: number = await invoke('get_available_balance', {})
             setBalance(balance / 100000)
-
-            const address: string = await invoke('get_address', {})
-            setAddress(address)
         })()
     }, [])
-
-    const updateRoots = async () => {
-        await invoke('compute_roots')
-        const nfRoot: string = await invoke('get_prop', {name: 'nf_root'})
-        setNFRoot(nfRoot)
-        const cmxRoot: string = await invoke('get_prop', {name: 'cmx_root'})
-        setCMXRoot(cmxRoot)
-    }
 
     const download = () => {
         (async () => {
@@ -73,7 +50,6 @@ export function Overview() {
     }
 
     if (election == undefined || election.id == '') return <SetElectionMessage />
-    if (votes == undefined) return <Alert>Could not contact server!</Alert>
 
     const progressPct: number | null | undefined = height && election && (
         100 * (height - election.start_height) / (election.end_height - election.start_height)
@@ -86,20 +62,13 @@ export function Overview() {
                 <p className="text-gray-600">
                     {election.question}
                 </p>
-                <Table>
-                    <Table.Head>
-                        <Table.HeadCell>Answer</Table.HeadCell>
-                        <Table.HeadCell>You Voted</Table.HeadCell>
-                    </Table.Head>
-                    <Table.Body>
-                        {votes.map((item, index) => (
-                            <Table.Row key={index} className="bg-white">
-                                <Table.Cell>{item.answer}</Table.Cell>
-                                <Table.Cell>{item.amount}</Table.Cell>
-                            </Table.Row>
+                <List>
+                        {election.candidates.map((item, index) => (
+                            <List.Item key={index} className="bg-white">
+                                {item.choice}
+                            </List.Item>
                         ))}
-                    </Table.Body>
-                </Table>
+                </List>
                 <Accordion>
                     <Accordion.Panel>
                         <Accordion.Title>View Voting Period</Accordion.Title>
@@ -114,15 +83,12 @@ export function Overview() {
                                     <span>{election.end_height}</span>
                                 </List.Item>
                             </List>
+                            {typeof(height) !== "number" && <Button onClick={download}>Download</Button>}
+                            {progressPct && <Progress progress={progressPct}></Progress>}
+                            <div className="text-xs">Current height: {height}</div>
                         </Accordion.Content>
                     </Accordion.Panel>
                 </Accordion>
-                {typeof(height) !== "number" && <Button onClick={download}>Download</Button>}
-                {progressPct && <Progress progress={progressPct}></Progress>}
-                <div className="text-xs">Current height: {height}</div>
-                <div className="break-all text-sm">{address}</div>
-                {nfRoot && <div style={{fontSize: '0.5rem'}}>NF Root: {nfRoot}</div>}
-                {cmxRoot && <div style={{fontSize: '0.5rem'}}>CMX Root: {cmxRoot}</div>}
                 <div className="text-xl font-semibold text-red-600 dark:text-white">Available Voting Power: {balance ?? 'N/A - Download first'}</div>
                 <Alert color="warning" className="mt-4">
                     <span>

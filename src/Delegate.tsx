@@ -1,16 +1,19 @@
 import { invoke } from "@tauri-apps/api/core";
-import { Button, Label, TextInput } from "flowbite-react";
+import { Button, Card, Label, TextInput } from "flowbite-react";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { SetElectionMessage } from "./SetElectionMessage";
 
 export function Delegate() {
     const [election, setElection] = useState<Election | undefined>()
+    const [address, setAddress] = useState<string | undefined>()
 
     useEffect(() => {
         (async () => {
             const election: Election = await invoke('get_election')
             setElection(election)
+            const address: string = await invoke('get_address', {})
+            setAddress(address)
         })()
     }, [])
 
@@ -23,17 +26,21 @@ export function Delegate() {
         }
     );
 
-    const onVote = (delegation: Vote) => {
+    const onSubmit = (delegation: Vote) => {
         (async () => {
             delegation.amount = Math.floor(delegation.amount * 100000)
             await invoke('vote', delegation)
         })()
     }
 
+
     if (election == undefined || election.id == '') return <SetElectionMessage />
     
-    return <div className="flex max-w justify-center">
-        <form onSubmit={handleSubmit(onVote)} className=" bg-gray-100 flex flex-col gap-4 p-4 w-5/6">
+    return (
+    <form className="flex justify-center items-center h-screen bg-gray-100" onSubmit={handleSubmit(onSubmit)}>
+        <Card className="w-full max-w-md">
+            <h2 className="text-2xl font-bold mb-4 text-center">Delegate</h2>
+            <div className="text-xs max-w-sm break-all">Your address is {address}</div>            
             <div>
                 <Label htmlFor="address" value="Address" />
                 <Controller
@@ -64,7 +71,8 @@ export function Delegate() {
                         />} />
             </div>
 
-            <Button type="submit">Vote</Button>
-        </form>
-    </div>
+            <Button type="submit">Delegate</Button>
+        </Card>
+    </form>
+    )
 }
