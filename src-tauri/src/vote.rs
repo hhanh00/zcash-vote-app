@@ -1,6 +1,6 @@
 use anyhow::{Error, Result};
-use orchard::keys::{PreparedIncomingViewingKey, Scope};
-use zcash_vote::{db::load_prop, decrypt::{to_fvk, to_sk}, validate::try_decrypt_ballot};
+use reqwest::header::CONTENT_TYPE;
+use zcash_vote::{db::load_prop, decrypt::{to_fvk, to_sk}};
 use std::sync::Mutex;
 use tauri::State;
 use crate::state::AppState;
@@ -26,17 +26,24 @@ pub fn get_available_balance(state: State<'_, Mutex<AppState>>) -> Result<u64, S
 }
 
 #[tauri::command]
-pub fn vote(
+pub async fn vote(
     address: String,
     amount: u64,
     state: State<'_, Mutex<AppState>>,
 ) -> Result<String, String> {
-    tauri_export!(state, connection, {
-        let sk = to_sk(&state.key)?;
-        let fvk = to_fvk(&state.key)?;
-        let domain = state.election.domain();
-        let signature_required = state.election.signature_required;
+    let r = async {
+        let (pool, base_url, sk, fvk, domain, signature_required) = {
+            let state = state.lock().unwrap();
+            let pool = state.pool.clone();
+            let base_url = state.url.clone();
+            let sk = to_sk(&state.key)?;
+            let fvk = to_fvk(&state.key)?;
+            let domain = state.election.domain();
+            let signature_required = state.election.signature_required;
+            (pool, base_url, sk, fvk, domain, signature_required)
+        };
         let mut rng = rand_core::OsRng;
+        let connection = pool.get()?;
         let ballot = zcash_vote::vote::vote(
             &connection,
             domain,
@@ -48,14 +55,17 @@ pub fn vote(
             &mut rng,
         )?;
 
-        let pivk = PreparedIncomingViewingKey::new(&fvk.to_ivk(Scope::External));
-        for action in ballot.data.actions.iter() {
-            if let Some(note) = try_decrypt_ballot(&pivk, action)? {
-                println!(">> {:?}", note);
-            }
-        }
+        let client = reqwest::Client::new();
+        let url = format!("{}/ballot", base_url);
+        client.post(url)
+        .header(CONTENT_TYPE, "application/json")
+        .json(&ballot)
+        .send().await?.text().await?;
 
+        crate::db::store_vote(&connection, &address, amount)?;
         let ballot = serde_json::to_string(&ballot).unwrap();
         Ok::<_, Error>(ballot)
-    })
+    };
+
+    r.await.map_err(|e| e.to_string())
 }
