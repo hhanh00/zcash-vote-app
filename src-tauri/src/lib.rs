@@ -43,6 +43,7 @@ pub fn run() {
             vote::get_sync_height,
             vote::get_available_balance,
             vote::vote,
+            vote::fetch_votes,
             trees::compute_roots,
         ])
         .run(tauri::generate_context!())

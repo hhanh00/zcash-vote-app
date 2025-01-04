@@ -54,9 +54,9 @@ pub fn mark_spent(connection: &Connection, height: u32, dnf: &[u8]) -> Result<()
     Ok(())
 }
 
-pub fn store_vote(connection: &Connection, address: &str, amount: u64) -> Result<()> {
+pub fn store_vote(connection: &Connection, hash: &str, address: &str, amount: u64) -> Result<()> {
     connection.execute(
-        "INSERT INTO votes(address, amount)
-        VALUES (?1, ?2)", params![address, amount])?;
+        "INSERT INTO votes(hash, address, amount)
+        VALUES (?1, ?2, ?3)", params![hash, address, amount])?;
     Ok(())
 }
