@@ -38,6 +38,7 @@ pub fn save_db(path: String, state: State<Mutex<AppState>>) -> Result<(), String
             connection.execute(
                 "CREATE TABLE IF NOT EXISTS votes(
                 id_vote INTEGER PRIMARY KEY,
+                hash TEXT NOT NULL,
                 address TEXT NOT NULL,
                 amount INTEGER NOT NULL)", []
             )?;
