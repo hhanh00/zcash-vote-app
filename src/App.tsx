@@ -26,7 +26,7 @@ function App() {
 
   return (
     <>
-    <nav className='flex items-center justify-between px-8 py-2 bg-gray-800 text-white'>
+    <nav className='fixed top-0 left-0 w-full z-50 flex items-center justify-between px-8 py-2 bg-gray-800 text-white'>
       <a href='/home'>Election</a>
       {hasElection && <a href='/overview'>Overview</a>}
       {hasElection && <a href='/history'>History</a>}
@@ -34,7 +34,7 @@ function App() {
       {hasElection && <a href='/delegate'>Delegate</a>}
     </nav>
     <Router>
-      <div className='mx-auto flex flex-col min-h-screen'>
+      <div className='pt-16 mx-auto flex flex-col min-h-screen'>
         <Routes>
           <Route path='/' element={<Navigate to='/home' />} />
           <Route path='/home' element={<Election />} />

@@ -65,8 +65,7 @@ pub async fn vote(
 
         let hash = hex::encode(ballot.data.sighash()?);
         crate::db::store_vote(&connection, &hash, &address, amount)?;
-        let ballot = serde_json::to_string(&ballot).unwrap();
-        Ok::<_, Error>(ballot)
+        Ok::<_, Error>(hash)
     };
 
     r.await.map_err(|e| e.to_string())
