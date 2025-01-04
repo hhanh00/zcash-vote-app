@@ -55,13 +55,15 @@ pub async fn vote(
             amount,
             &mut rng,
         )?;
+        println!("cmx_root {}", hex::encode(&ballot.data.anchors.cmx));
 
         let client = reqwest::Client::new();
         let url = format!("{}/ballot", base_url);
-        client.post(url)
+        let res = client.post(url)
         .header(CONTENT_TYPE, "application/json")
         .json(&ballot)
         .send().await?.text().await?;
+        println!("{res}");
 
         let hash = hex::encode(ballot.data.sighash()?);
         crate::db::store_vote(&connection, &hash, &address, amount)?;
