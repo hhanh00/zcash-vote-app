@@ -13,8 +13,11 @@ type Vote = {
 export const History: React.FC<ElectionProps> = ({election}) => {
     const [votes, setVotes] = useState<Vote[] | undefined>()
     useEffect(() => {
+        if (election == undefined) return
+
         (
             async () => {
+                console.log(election)
                 const votes: Vote[] = await invoke('fetch_votes')
                 for (const v of votes) {
                     const c = election.candidates.find((c) => c.address == v.address)
@@ -25,9 +28,9 @@ export const History: React.FC<ElectionProps> = ({election}) => {
                 setVotes(votes)
             }
         )()
-    })
+    }, [election])
 
-    return <div className="flex justify-center items-center h-screen bg-gray-100">
+    return <div className="flex justify-center items-center h-fill bg-gray-100">
         <Card className="w-full max-w-full">
             <Table>
                 <Table.Head>

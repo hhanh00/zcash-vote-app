@@ -1,9 +1,15 @@
 import { invoke } from "@tauri-apps/api/core"
 import { SetElectionMessage } from "./SetElectionMessage"
-import { Button, Card, Label, Radio, TextInput } from "flowbite-react"
+import { Button, Card, Label, Radio, Spinner, TextInput } from "flowbite-react"
 import { Controller, SubmitHandler, useForm } from "react-hook-form"
+import { useState } from "react"
+import { VoteSuccess } from "./VoteAck"
 
 export const Vote: React.FC<ElectionProps> = ({election}) => {
+    const [hash, setHash] = useState<string | undefined>()
+    const [showAck, setShowAck] = useState<boolean>(false)
+    const [voting, setVoting] = useState(false);
+
     const { control, handleSubmit } = useForm(
         {
             defaultValues: {
@@ -14,15 +20,26 @@ export const Vote: React.FC<ElectionProps> = ({election}) => {
     );
 
     const onSubmit: SubmitHandler<Vote> = (vote) => {
+        setVoting(true);
         (async () => {
             vote.amount = Math.floor(vote.amount * 100000)
-            await invoke('vote', vote)
+            const hash: string = await invoke('vote', vote)
+            console.log(hash)
+            setHash(hash)
+            setVoting(false)
+            setShowAck(true)
         })()
     }
 
     if (election == undefined || election.id == "") return <SetElectionMessage />
 
     return (
+        <>
+        {voting && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <Spinner color="info" size="xl" />
+            </div>
+        )}
         <form className="flex justify-center items-center h-screen bg-gray-100" onSubmit={handleSubmit(onSubmit)}>
             <Card className="w-full max-w-md">
                 <h2 className="text-2xl font-bold mb-4 text-center">Vote</h2>
@@ -69,5 +86,8 @@ export const Vote: React.FC<ElectionProps> = ({election}) => {
                 </div>
             </Card>
         </form>
+        <Spinner></Spinner>
+        <VoteSuccess hash={hash!} open={showAck} setOpen={setShowAck} />
+        </>
     )
 }
