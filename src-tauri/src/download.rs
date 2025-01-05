@@ -2,7 +2,12 @@ use std::sync::Mutex;
 
 use anyhow::{Error, Result};
 use tauri::{ipc::Channel, State};
-use zcash_vote::{ballot::Ballot, db::{load_prop, store_prop}, decrypt::to_fvk, Election};
+use zcash_vote::{
+    ballot::Ballot,
+    db::{load_prop, store_prop},
+    decrypt::to_fvk,
+    election::Election,
+};
 
 use crate::{db::store_ballot, state::AppState, validate::handle_ballot};
 
@@ -30,11 +35,17 @@ pub async fn download_reference_data(
             (connection, election, fvk)
         };
         let lwd_url = load_prop(&connection, "lwd")?.unwrap_or("https://zec.rocks".to_string());
-        let (connection, h) =
-        zcash_vote::download::download_reference_data(connection, 0, &election, Some(fvk),
-            &lwd_url, move |h| {
-            let _ = channel.send(h);
-        }).await?;
+        let (connection, h) = zcash_vote::download::download_reference_data(
+            connection,
+            0,
+            &election,
+            Some(fvk),
+            &lwd_url,
+            move |h| {
+                let _ = channel.send(h);
+            },
+        )
+        .await?;
         store_prop(&connection, "height", &h.to_string()).unwrap();
         Ok::<_, Error>(())
     };

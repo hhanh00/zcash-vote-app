@@ -1,10 +1,13 @@
+use crate::state::AppState;
 use anyhow::{Error, Result};
 use reqwest::header::CONTENT_TYPE;
 use serde::{Deserialize, Serialize};
-use zcash_vote::{db::load_prop, decrypt::{to_fvk, to_sk}};
 use std::sync::Mutex;
 use tauri::State;
-use crate::state::AppState;
+use zcash_vote::{
+    db::load_prop,
+    decrypt::{to_fvk, to_sk},
+};
 
 #[tauri::command]
 pub fn get_sync_height(state: State<'_, Mutex<AppState>>) -> Result<Option<u32>, String> {
@@ -59,10 +62,12 @@ pub async fn vote(
 
         let client = reqwest::Client::new();
         let url = format!("{}/ballot", base_url);
-        let rep = client.post(url)
-        .header(CONTENT_TYPE, "application/json")
-        .json(&ballot)
-        .send().await?;
+        let rep = client
+            .post(url)
+            .header(CONTENT_TYPE, "application/json")
+            .json(&ballot)
+            .send()
+            .await?;
         let success = rep.status().is_success();
         let res = rep.text().await?;
         if !success {
@@ -81,19 +86,25 @@ pub async fn vote(
 #[tauri::command]
 pub fn fetch_votes(state: State<'_, Mutex<AppState>>) -> Result<Vec<Vote>, String> {
     tauri_export!(state, connection, {
-        let mut s = connection.prepare(
-            "SELECT id_vote, hash, address, amount FROM votes ORDER BY id_vote"
-        )?;
-        let rows = s.query_map([], |r| Ok((
-            r.get::<_, u32>(0)?,
-            r.get::<_, String>(1)?,
-            r.get::<_, String>(2)?,
-            r.get::<_, u64>(3)?,
-        )))?;
+        let mut s = connection
+            .prepare("SELECT id_vote, hash, address, amount FROM votes ORDER BY id_vote")?;
+        let rows = s.query_map([], |r| {
+            Ok((
+                r.get::<_, u32>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+                r.get::<_, u64>(3)?,
+            ))
+        })?;
         let mut votes = vec![];
         for r in rows {
             let (id_vote, hash, address, amount) = r?;
-            votes.push(Vote { id: id_vote, hash, address, amount })
+            votes.push(Vote {
+                id: id_vote,
+                hash,
+                address,
+                amount,
+            })
         }
         Ok::<_, Error>(votes)
     })

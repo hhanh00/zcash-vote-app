@@ -5,7 +5,7 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::Connection;
 use tauri::State;
-use zcash_vote::{db::create_schema, Election};
+use zcash_vote::{db::create_schema, election::Election};
 
 use crate::db::{load_election, store_election};
 
@@ -40,7 +40,8 @@ pub fn save_db(path: String, state: State<Mutex<AppState>>) -> Result<(), String
                 id_vote INTEGER PRIMARY KEY,
                 hash TEXT NOT NULL,
                 address TEXT NOT NULL,
-                amount INTEGER NOT NULL)", []
+                amount INTEGER NOT NULL)",
+                [],
             )?;
         }
         let manager = SqliteConnectionManager::file(&path);
@@ -49,7 +50,8 @@ pub fn save_db(path: String, state: State<Mutex<AppState>>) -> Result<(), String
         store_election(&connection, &s.url, &s.election, &s.key)?;
         s.pool = pool;
         Ok::<_, Error>(())
-    })().map_err(|e| e.to_string())
+    })()
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -64,7 +66,8 @@ pub fn open_db(path: String, state: State<Mutex<AppState>>) -> Result<(), String
         s.key = key;
         s.pool = pool;
         Ok::<_, Error>(())
-    })().map_err(|e| e.to_string())
+    })()
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

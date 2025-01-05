@@ -4,7 +4,10 @@ use anyhow::{Error, Result};
 use pasta_curves::group::ff::PrimeField as _;
 use rusqlite::Connection;
 use tauri::State;
-use zcash_vote::{db::{load_prop, store_prop}, trees::{calculate_merkle_paths, list_cmxs, list_nf_ranges}};
+use zcash_vote::{
+    db::{load_prop, store_prop},
+    trees::{calculate_merkle_paths, list_cmxs, list_nf_ranges},
+};
 
 use crate::state::AppState;
 
