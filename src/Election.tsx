@@ -16,8 +16,8 @@ export function Election() {
     const { control, handleSubmit, formState: { errors } } = useForm(
         {
             defaultValues: {
-                url: 'https://vote.zcash-infra.com/nsm-nu7',
-                key: 'shadow emerge trouble police canal access evil loyal giant click night price mule just clutch math fossil curious trim denial cereal measure left slight',
+                url: '',
+                key: '',
             },
         }
     );
@@ -111,7 +111,6 @@ export function Election() {
                                     }}
                                     render={({ field }) =>
                                         <TextInput
-                                            autoFocus
                                             type='key'
                                             {...field}
                                             color={errors.key && 'failure'}
