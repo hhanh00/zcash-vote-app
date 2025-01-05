@@ -3,7 +3,11 @@ use std::sync::Mutex;
 use anyhow::{Error, Result};
 use rusqlite::{params, Connection};
 use tauri::State;
-use zcash_vote::{ballot::Ballot, db::{load_prop, store_prop}, Election};
+use zcash_vote::{
+    ballot::Ballot,
+    db::{load_prop, store_prop},
+    election::Election,
+};
 
 use crate::state::AppState;
 
@@ -43,20 +47,25 @@ pub fn store_ballot(connection: &Connection, height: u32, ballot: &Ballot) -> Re
     let ballot = serde_json::to_string(ballot)?;
     connection.execute(
         "INSERT INTO ballots(election, height, hash, data)
-        VALUES (?1, ?2, ?3, ?4)", params![0, height, &hash, &ballot])?;
+        VALUES (?1, ?2, ?3, ?4)",
+        params![0, height, &hash, &ballot],
+    )?;
     Ok(())
 }
 
 pub fn mark_spent(connection: &Connection, height: u32, dnf: &[u8]) -> Result<()> {
     connection.execute(
         "UPDATE notes SET spent = ?1 WHERE dnf = ?2",
-        params![height, dnf])?;
+        params![height, dnf],
+    )?;
     Ok(())
 }
 
 pub fn store_vote(connection: &Connection, hash: &str, address: &str, amount: u64) -> Result<()> {
     connection.execute(
         "INSERT INTO votes(hash, address, amount)
-        VALUES (?1, ?2, ?3)", params![hash, address, amount])?;
+        VALUES (?1, ?2, ?3)",
+        params![hash, address, amount],
+    )?;
     Ok(())
 }

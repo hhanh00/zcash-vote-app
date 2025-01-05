@@ -9,18 +9,19 @@ macro_rules! tauri_export {
             let $state = $state.lock().unwrap();
             let $connection = $state.pool.get()?;
             $block
-        })().map_err(|e| e.to_string())
+        })()
+        .map_err(|e| e.to_string())
     };
 }
 
-#[path ="cash.z.wallet.sdk.rpc.rs"]
+pub mod address;
+pub mod db;
+pub mod download;
+#[path = "cash.z.wallet.sdk.rpc.rs"]
 pub mod rpc;
 pub mod state;
-pub mod db;
-pub mod validate;
-pub mod download;
 pub mod trees;
-pub mod address;
+pub mod validate;
 pub mod vote;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
