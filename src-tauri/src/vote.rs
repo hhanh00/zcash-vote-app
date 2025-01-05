@@ -59,10 +59,15 @@ pub async fn vote(
 
         let client = reqwest::Client::new();
         let url = format!("{}/ballot", base_url);
-        let res = client.post(url)
+        let rep = client.post(url)
         .header(CONTENT_TYPE, "application/json")
         .json(&ballot)
-        .send().await?.text().await?;
+        .send().await?;
+        let success = rep.status().is_success();
+        let res = rep.text().await?;
+        if !success {
+            anyhow::bail!(res);
+        }
         println!("{res}");
 
         let hash = hex::encode(ballot.data.sighash()?);
