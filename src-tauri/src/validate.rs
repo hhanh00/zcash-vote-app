@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Result, Error};
 use orchard::keys::{PreparedIncomingViewingKey, Scope};
 use rusqlite::Connection;
 use std::sync::Mutex;
@@ -26,7 +26,8 @@ pub fn validate_ballot(ballot: String, state: State<Mutex<AppState>>) -> Result<
     tauri_export!(state, _connection, {
         let election = &state.election;
         let ballot = serde_json::from_str::<Ballot>(&ballot)?;
-        zcash_vote::validate::validate_ballot(ballot, election.signature_required)
+        zcash_vote::validate::validate_ballot(ballot, election.signature_required)?;
+        Ok::<_, Error>(())
     })
 }
 

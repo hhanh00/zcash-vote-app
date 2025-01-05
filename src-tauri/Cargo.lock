@@ -6867,7 +6867,7 @@ dependencies = [
 [[package]]
 name = "zcash-vote"
 version = "0.1.0"
-source = "git+https://github.com/hhanh00/zcash-vote.git?rev=833c596#833c5967e3acfda3f97f6739e3beb586d00fb871"
+source = "git+https://github.com/hhanh00/zcash-vote.git?rev=955fdd4#955fdd4fd6d472d5bb15548fb89e25d7d5492917"
 dependencies = [
  "anyhow",
  "bech32 0.9.1",
