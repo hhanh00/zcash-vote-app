@@ -3,12 +3,9 @@ import { SetElectionMessage } from "./SetElectionMessage"
 import { Button, Card, Label, Radio, Spinner, TextInput } from "flowbite-react"
 import { Controller, SubmitHandler, useForm } from "react-hook-form"
 import { useState } from "react"
-import { VoteSuccess } from "./VoteAck"
 import Swal from "sweetalert2"
 
 export const Vote: React.FC<ElectionProps> = ({ election }) => {
-    const [hash, setHash] = useState<string | undefined>()
-    const [showAck, setShowAck] = useState<boolean>(false)
     const [voting, setVoting] = useState(false);
 
     const { control, handleSubmit } = useForm(
@@ -27,8 +24,11 @@ export const Vote: React.FC<ElectionProps> = ({ election }) => {
                 vote.amount = Math.floor(vote.amount * 100000)
                 const hash: string = await invoke('vote', vote)
                 console.log(hash)
-                setHash(hash)
-                setShowAck(true)
+                await Swal.fire(
+                    {
+                        icon: "success",
+                        title: hash
+                    })
             }
             catch (e: any) {
                 console.log(e)
@@ -37,7 +37,6 @@ export const Vote: React.FC<ElectionProps> = ({ election }) => {
                         icon: "error",
                         title: e
                     })
-
             }
             finally {
                 setVoting(false)
@@ -100,7 +99,6 @@ export const Vote: React.FC<ElectionProps> = ({ election }) => {
                     </div>
                 </Card>
             </form>
-            <VoteSuccess hash={hash!} open={showAck} setOpen={setShowAck} />
         </>
     )
 }
