@@ -28,6 +28,7 @@ export const Overview: React.FC<ElectionProps> = ({election}) => {
                 setHeight(h);
             };
             await invoke('download_reference_data', {channel: channel});
+            await invoke('sync')
             const balance: number = await invoke('get_available_balance', {})
             setBalance(balance / 100000)
         })()
