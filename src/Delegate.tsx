@@ -30,7 +30,12 @@ export const Delegate: React.FC<ElectionProps> = ({ election }) => {
             setVoting(true);
             try {
                 delegation.amount = Math.floor(delegation.amount * 100000)
-                await invoke('vote', delegation)
+                const hash: string = await invoke('vote', delegation)
+                await Swal.fire(
+                    {
+                        icon: "success",
+                        title: hash
+                    })
             }
             catch (e: any) {
                 console.log(e)
