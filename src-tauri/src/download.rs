@@ -1,6 +1,7 @@
 use std::sync::Mutex;
 
 use anyhow::{Error, Result};
+use rusqlite::OptionalExtension;
 use tauri::{ipc::Channel, State};
 use zcash_vote::{
     ballot::Ballot,
@@ -59,10 +60,14 @@ pub async fn sync(state: State<'_, Mutex<AppState>>) -> Result<(), String> {
             let s = state.lock().unwrap();
             (s.url.clone(), s.pool.clone())
         };
+        let connection = pool.get()?;
+        let r = connection.query_row("SELECT 1 FROM cmxs", [], |_| Ok(())).optional()?;
+        if r.is_none() {
+            return Ok::<_, Error>(()); // don't sync if we haven't downloaded blocks
+        }
         let url = format!("{}/num_ballots", base_url);
         let n = reqwest::get(url).await?.text().await?;
         let n = n.parse::<u32>()?;
-        let connection = pool.get()?;
         let election = load_prop(&connection, "election")?.unwrap();
         let election = serde_json::from_str::<Election>(&election)?;
         let c = connection.query_row("SELECT COUNT(*) FROM ballots", [], |r| r.get::<_, u32>(0))?;
