@@ -4,10 +4,10 @@ use anyhow::{Error, Result};
 use rusqlite::{params, Connection};
 use tauri::State;
 use zcash_vote::{
-    ballot::Ballot,
     db::{load_prop, store_prop},
     election::Election,
 };
+use orchard::vote::Ballot;
 
 use crate::state::AppState;
 
