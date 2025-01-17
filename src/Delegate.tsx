@@ -49,6 +49,7 @@ export const Delegate: React.FC<ElectionProps> = ({ election }) => {
             finally {
                 setVoting(false)
             }
+            await invoke('sync')
         })()
     }
 

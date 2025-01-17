@@ -5,8 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use tauri::State;
 use zcash_vote::{
-    db::load_prop,
-    decrypt::{to_fvk, to_sk},
+    address::VoteAddress, db::{list_notes, load_prop}, decrypt::{to_fvk, to_sk}, election::BALLOT_PK, trees::{list_cmxs, list_nf_ranges}
 };
 
 #[tauri::command]
@@ -47,16 +46,23 @@ pub async fn vote(
             (pool, base_url, sk, fvk, domain, signature_required)
         };
         let mut rng = rand_core::OsRng;
+        let vaddress = VoteAddress::decode(&address)?;
         let connection = pool.get()?;
-        let ballot = zcash_vote::vote::vote(
-            &connection,
+        let notes = list_notes(&connection, 0, &fvk)?;
+        let cmxs = list_cmxs(&connection)?;
+        let nfs = list_nf_ranges(&connection)?;
+        let ballot = orchard::vote::vote(
             domain,
             signature_required,
             sk,
             &fvk,
-            &address,
+            vaddress.0,
             amount,
+            &notes,
+            &nfs,
+            &cmxs,
             &mut rng,
+            &BALLOT_PK,
         )?;
         println!("cmx_root {}", hex::encode(&ballot.data.anchors.cmx));
 

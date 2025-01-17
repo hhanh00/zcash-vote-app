@@ -1,5 +1,5 @@
 use anyhow::{Error, Result};
-use orchard::keys::{PreparedIncomingViewingKey, Scope};
+use orchard::{keys::{PreparedIncomingViewingKey, Scope}, vote::{try_decrypt_ballot, Ballot}};
 use rusqlite::Connection;
 use std::sync::Mutex;
 
@@ -7,11 +7,9 @@ use bip0039::Mnemonic;
 use tauri::State;
 use zcash_address::unified::Encoding;
 use zcash_vote::{
-    ballot::Ballot,
     db::{load_prop, store_cmx, store_note},
     decrypt::to_fvk,
-    election::Election,
-    validate::try_decrypt_ballot,
+    election::{Election, BALLOT_VK},
 };
 
 use crate::{db::mark_spent, state::AppState};
@@ -32,7 +30,7 @@ pub fn validate_ballot(ballot: String, state: State<Mutex<AppState>>) -> Result<
     tauri_export!(state, _connection, {
         let election = &state.election;
         let ballot = serde_json::from_str::<Ballot>(&ballot)?;
-        zcash_vote::validate::validate_ballot(ballot, election.signature_required)?;
+        orchard::vote::validate_ballot(ballot, election.signature_required, &BALLOT_VK)?;
         Ok::<_, Error>(())
     })
 }
@@ -57,7 +55,7 @@ pub fn handle_ballot(
             store_note(
                 connection,
                 0,
-                election.domain().0,
+                election.domain(),
                 &fvk,
                 height,
                 position + i as u32,

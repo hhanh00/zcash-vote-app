@@ -1,10 +1,10 @@
 use std::sync::Mutex;
 
 use anyhow::{Error, Result};
+use orchard::vote::Ballot;
 use rusqlite::OptionalExtension;
 use tauri::{ipc::Channel, State};
 use zcash_vote::{
-    ballot::Ballot,
     db::{load_prop, store_prop},
     decrypt::to_fvk,
     election::Election,
