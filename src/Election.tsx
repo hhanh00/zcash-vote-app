@@ -1,9 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
-import { Button, Label, Modal, TextInput } from "flowbite-react";
 import { useState } from "react";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 type FormValues = {
     url: string;
@@ -84,9 +87,8 @@ export function Election() {
                     </p>
                 </div>
 
-                <Modal show={openModal} size='md' onClose={() => setOpenModal(false)} popup>
-                    <Modal.Header />
-                    <Modal.Body>
+                <Dialog open={openModal} onOpenChange={(c) => setOpenModal(c)}>
+                    <DialogContent>
                         <form className='flex flex-col gap-4' onSubmit={handleSubmit(onCloseModal)}>
                             <div className='flex flex-col gap-2'>
                                 <Label htmlFor='url'>Election URL</Label>
@@ -95,12 +97,11 @@ export function Election() {
                                         validate: validateURL,
                                     }}
                                     render={({ field }) =>
-                                        <TextInput
+                                        <Input
                                             autoFocus
                                             type='url'
                                             {...field}
                                             color={errors.url && 'failure'}
-                                            helperText={<span className='font-medium'>{errors.url?.message}</span>}
                                         />} />
                             </div>
                             <div className='flex flex-col gap-2'>
@@ -110,19 +111,18 @@ export function Election() {
                                         validate: validateKey,
                                     }}
                                     render={({ field }) =>
-                                        <TextInput
+                                        <Input
                                             type='key'
                                             {...field}
                                             color={errors.key && 'failure'}
-                                            helperText={<span className='font-medium'>{errors.key?.message}</span>}
                                         />} />
                             </div>
                             <div className='w-full gap-8'>
                                 <Button type='submit'>Save Election</Button>
                             </div>
                         </form>
-                    </Modal.Body>
-                </Modal>
+                    </DialogContent>
+                </Dialog>
             </div>
         </>
     )

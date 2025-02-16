@@ -1,7 +1,11 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
-import { Accordion, Alert, Button, Card, List, Progress } from "flowbite-react"
 import { useEffect, useState } from "react";
 import { SetElectionMessage } from "./SetElectionMessage";
+import { Card } from "./components/ui/card";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./components/ui/accordion";
+import { Button } from "./components/ui/button";
+import { Progress } from "./components/ui/progress";
+import { Alert } from "./components/ui/alert";
 
 export const Overview: React.FC<ElectionProps> = ({election}) => {
     const [height, setHeight] = useState<number | null | undefined>()
@@ -47,32 +51,32 @@ export const Overview: React.FC<ElectionProps> = ({election}) => {
                 <p className="text-gray-600">
                     {election.question}
                 </p>
-                <List>
+                <div>
                         {election.candidates.map((item, index) => (
-                            <List.Item key={index} className="bg-white">
+                            <div key={index} className="bg-white">
                                 {item.choice}
-                            </List.Item>
+                            </div>
                         ))}
-                </List>
-                <Accordion>
-                    <Accordion.Panel>
-                        <Accordion.Title>View Voting Period</Accordion.Title>
-                        <Accordion.Content>
-                            <List>
-                                <List.Item className="flex justify-between">
+                </div>
+                <Accordion type="single">
+                    <AccordionItem value="info">
+                        <AccordionTrigger>View Voting Period</AccordionTrigger>
+                        <AccordionContent>
+                            <div>
+                                <div className="flex justify-between">
                                     <span>Registration Start</span>
                                     <span>{election.start_height}</span>
-                                </List.Item>
-                                <List.Item className="flex justify-between">
+                                </div>
+                                <div className="flex justify-between">
                                     <span>Registration End</span>
                                     <span>{election.end_height}</span>
-                                </List.Item>
-                            </List>
+                                </div>
+                            </div>
                             {typeof(height) !== "number" && <Button onClick={download}>Download</Button>}
-                            {progressPct && <Progress progress={progressPct}></Progress>}
+                            {progressPct && <Progress value={progressPct}></Progress>}
                             <div className="text-xs">Current height: {height}</div>
-                        </Accordion.Content>
-                    </Accordion.Panel>
+                        </AccordionContent>
+                    </AccordionItem>
                 </Accordion>
                 <div className="text-xl font-semibold text-red-600 dark:text-white">Available Voting Power: {balance ?? 'N/A - Download first'}</div>
                 <Alert color="warning" className="mt-4">
