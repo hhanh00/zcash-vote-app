@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core"
-import { Card, Table } from "flowbite-react"
 import { useEffect, useState } from "react"
+import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./components/ui/table";
 
 type Vote = {
     id: number;
@@ -33,22 +34,24 @@ export const History: React.FC<ElectionProps> = ({election}) => {
     return <div className="flex justify-center items-center h-fill bg-gray-100">
         <Card className="w-full max-w-full">
             <Table>
-                <Table.Head>
-                <Table.HeadCell>Hash</Table.HeadCell>
-                <Table.HeadCell>Address</Table.HeadCell>
-                <Table.HeadCell>Amount</Table.HeadCell>
-                <Table.HeadCell>Choice</Table.HeadCell>
-                </Table.Head>
-                <Table.Body>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Hash</TableHead>
+                        <TableHead>Address</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Choice</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
                     {votes && votes.map((v) => {
-                        return <Table.Row key={v.id}>
-                            <Table.Cell className="max-w-md break-all">{v.hash}</Table.Cell>
-                            <Table.Cell className="max-w-md break-all">{v.address}</Table.Cell>
-                            <Table.Cell>{v.amount / 100000}</Table.Cell>
-                            <Table.Cell>{v.choice}</Table.Cell>
-                        </Table.Row>
+                        return <TableRow key={v.id}>
+                            <TableCell className="max-w-md break-all">{v.hash}</TableCell>
+                            <TableCell className="max-w-md break-all">{v.address}</TableCell>
+                            <TableCell>{v.amount / 100000}</TableCell>
+                            <TableCell>{v.choice}</TableCell>
+                        </TableRow>
                     })}
-                </Table.Body>
+                </TableBody>
             </Table>
         </Card></div>
 }

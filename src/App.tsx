@@ -4,7 +4,6 @@ import {
   Route,
   Navigate,
 } from 'react-router-dom'
-import './App.css'
 import { Overview } from './Overview'
 import { Delegate } from './Delegate'
 import { Election } from './Election'
