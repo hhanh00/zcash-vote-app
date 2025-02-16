@@ -31,14 +31,13 @@ jobs:
           echo "Certificate imported."
       - name: Check out code
         uses: actions/checkout@v4
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v3
+      - uses: pnpm/action-setup@v4
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          version: 10
       - name: Prepare Tauri
         run: |
-          npm install
-          npx tauri icon
+          pnpm install
+          pnpm tauri icon
       - name: Tauri build
         uses: tauri-apps/tauri-action@v0
         env:
