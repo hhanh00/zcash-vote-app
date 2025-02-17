@@ -139,11 +139,10 @@ export const Delegate: React.FC<ElectionProps> = ({ election }) => {
         </form>
       </Form>
       {voting && (
-        <div>
-          <div className="text-lg">Please Wait...</div>
-          <Spinner />
-        </div>
-      )}
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <Spinner />
+      </div>
+    )}
     </div>
   );
 };
