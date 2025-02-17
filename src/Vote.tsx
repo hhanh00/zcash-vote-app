@@ -4,23 +4,38 @@ import { SubmitHandler, useForm } from "react-hook-form";
 import { useState } from "react";
 import Swal from "sweetalert2";
 import { Spinner } from "./Spinner";
-import { Card, CardHeader } from "./components/ui/card";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "./components/ui/card";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
+  FormMessage,
 } from "./components/ui/form";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { RadioGroup, RadioGroupItem } from "./components/ui/radio-group";
-import { Label } from "./components/ui/label";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useNavigate } from "react-router-dom";
+
+const voteSchema = z.object({
+  address: z.string().min(1, "A choice is required"),
+  amount: z.coerce.number().int(),
+});
 
 export const Vote: React.FC<ElectionProps> = ({ election }) => {
+  const navigate = useNavigate();
   const [voting, setVoting] = useState(false);
 
-  const form = useForm({
+  const form = useForm<z.infer<typeof voteSchema>>({
+    resolver: zodResolver(voteSchema),
     defaultValues: {
       address: "",
       amount: 0,
@@ -39,6 +54,7 @@ export const Vote: React.FC<ElectionProps> = ({ election }) => {
           icon: "success",
           title: hash,
         });
+        navigate("/overview");
       } catch (e: any) {
         console.log(e);
         await Swal.fire({
@@ -54,42 +70,40 @@ export const Vote: React.FC<ElectionProps> = ({ election }) => {
   if (election == undefined || election.id == "") return <SetElectionMessage />;
 
   return (
-    <>
-      {voting && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <Spinner />
-        </div>
-      )}
-      <Card className="w-full max-w-md">
-        <CardHeader>Vote</CardHeader>
+    <div className="flex flex-col justify-center items-center">
+      <Card className="w-md p-2">
+        <CardHeader>
+          <CardTitle>Vote</CardTitle>
+          <CardDescription>{election.question}</CardDescription>
+        </CardHeader>
         <Form {...form}>
-          <form
-            className="flex justify-center items-center h-screen bg-gray-100"
-            onSubmit={handleSubmit(onSubmit)}
-          >
+          <form className="flex bg-gray-100" onSubmit={handleSubmit(onSubmit)}>
             <div className="flex flex-col gap-4">
               <FormField
                 control={control}
                 name="address"
                 render={({ field }) => (
-                  <FormItem className="name">
-                    <FormLabel>Choice</FormLabel>
+                  <FormItem className="address">
+                    <FormLabel>Choose one...</FormLabel>
                     <FormControl>
-                      <RadioGroup defaultValue="option-one" {...field}>
-                        <div className="flex flex-col gap-2">
-                          {election.candidates.map((c) => (
-                            <div
-                              key={c.address}
-                              className="flex items-center space-x-2"
-                            >
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        {election.candidates.map((c) => (
+                          <FormItem
+                            key={c.address}
+                            className="flex items-center space-x-3 space-y-0"
+                          >
+                            <FormControl>
                               <RadioGroupItem
                                 value={c.address}
                                 id={c.address}
                               />
-                              <Label htmlFor={c.address}>{c.choice}</Label>
-                            </div>
-                          ))}
-                        </div>
+                            </FormControl>
+                            <FormLabel>{c.choice}</FormLabel>
+                          </FormItem>
+                        ))}
                       </RadioGroup>
                     </FormControl>
                   </FormItem>
@@ -100,7 +114,7 @@ export const Vote: React.FC<ElectionProps> = ({ election }) => {
                 control={control}
                 name="amount"
                 render={({ field }) => (
-                  <FormItem className="name">
+                  <FormItem className="amount">
                     <FormLabel>Votes</FormLabel>
                     <FormControl>
                       <Input
@@ -108,10 +122,10 @@ export const Vote: React.FC<ElectionProps> = ({ election }) => {
                         type="number"
                         placeholder="Enter a number"
                         {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                        required
+                        onChange={(v) => field.onChange(v.target.value)}
                       />
                     </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -121,6 +135,12 @@ export const Vote: React.FC<ElectionProps> = ({ election }) => {
           </form>
         </Form>
       </Card>
-    </>
+      {voting && (
+        <div>
+          <div className="text-lg">Please wait...</div>
+          <Spinner />
+        </div>
+      )}
+    </div>
   );
 };
