@@ -136,11 +136,10 @@ export const Vote: React.FC<ElectionProps> = ({ election }) => {
         </Form>
       </Card>
       {voting && (
-        <div>
-          <div className="text-lg">Please wait...</div>
-          <Spinner />
-        </div>
-      )}
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <Spinner />
+      </div>
+    )}
     </div>
   );
 };
