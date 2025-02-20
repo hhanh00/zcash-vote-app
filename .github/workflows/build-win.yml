@@ -1,6 +1,7 @@
 name: Rust CI Windows
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - ci
