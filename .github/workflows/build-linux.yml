@@ -2,6 +2,7 @@ name: Rust CI Linux
 
 on:
   push:
+    workflow_dispatch:
     branches:
       - ci
     tags:
