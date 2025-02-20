@@ -15,32 +15,26 @@ jobs:
     steps:
     - name: Check out code
       uses: actions/checkout@v4
-    - name: Check out code
-      uses: actions/checkout@v3
+    - uses: pnpm/action-setup@v4
       with:
-        repository: hhanh00/warp
-        submodules: true
-        path: warp
-    - name: Install Protoc
-      uses: arduino/setup-protoc@v3
-      with:
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        version: 10
     - name: Tauri build
       run: |
         sudo apt update
         sudo apt install -y libwebkit2gtk-4.1-dev
-        npm install
-        npx tauri icon
-        NO_STRIP=1 npx tauri build
-    - name: Upload AppImage artifact
+        pnpm install
+        pnpm tauri icon
+        NO_STRIP=1 pnpm tauri build --no-bundle
+        pnpm tauri bundle --bundles deb
+    - name: Upload Debian artifact
       uses: actions/upload-artifact@v4
       with:
-        name: zcash-vote-app.AppImage
-        path: src-tauri/target/release/bundle/appimage/*.AppImage
+        name: zcash-vote-app.deb
+        path: src-tauri/target/release/bundle/deb/*.deb
     - name: Create Release
       if: startsWith(github.ref_name, 'v')
       uses: softprops/action-gh-release@v2
       with:
-        files: src-tauri/target/release/bundle/appimage/*.AppImage
+        files: src-tauri/target/release/bundle/deb/*.deb
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
