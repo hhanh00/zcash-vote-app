@@ -1,8 +1,8 @@
 name: Rust CI Linux
 
 on:
+  workflow_dispatch:
   push:
-    workflow_dispatch:
     branches:
       - ci
     tags:
