@@ -51,7 +51,6 @@ pub fn handle_ballot(
     for (i, action) in ballot.data.actions.iter().enumerate() {
         mark_spent(connection, height, &action.nf)?;
         if let Some(note) = try_decrypt_ballot(&pivk, action)? {
-            println!("{:?}", note);
             store_note(
                 connection,
                 0,

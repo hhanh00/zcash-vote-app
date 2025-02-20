@@ -64,7 +64,6 @@ pub async fn vote(
             &mut rng,
             &BALLOT_PK,
         )?;
-        println!("cmx_root {}", hex::encode(&ballot.data.anchors.cmx));
 
         let client = reqwest::Client::new();
         let url = format!("{}/ballot", base_url);
@@ -79,7 +78,6 @@ pub async fn vote(
         if !success {
             anyhow::bail!(res);
         }
-        println!("{res}");
 
         let hash = hex::encode(ballot.data.sighash()?);
         crate::db::store_vote(&connection, &hash, &address, amount)?;
