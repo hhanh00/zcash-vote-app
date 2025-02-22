@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin
       - uses: apple-actions/import-codesign-certs@v3
         with:
           p12-file-base64: ${{ secrets.APPLE_CERTIFICATE }}
@@ -53,11 +55,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: zcash-vote-app.dmg
-          path: src-tauri/target/release/bundle/dmg/*.dmg
+          path: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
       - name: Create Release
         if: startsWith(github.ref_name, 'v')
         uses: softprops/action-gh-release@v2
         with:
-          files: src-tauri/target/release/bundle/dmg/*.dmg
+          files: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
