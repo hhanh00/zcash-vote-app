@@ -5,7 +5,9 @@ on:
   pull_request:
   push:
     branches:
-      - ci
+      - main
+    tags:
+      - "v*"
 
 jobs:
   build-macos:
@@ -36,7 +38,7 @@ jobs:
         run: |
           pnpm install
           pnpm tauri icon
-      - name: Tauri build
+      - name: Tauri build --target universal-apple-darwin
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
