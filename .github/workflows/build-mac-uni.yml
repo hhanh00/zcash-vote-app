@@ -37,7 +37,7 @@ jobs:
         run: |
           pnpm install
           pnpm tauri icon
-      - name: Tauri build --target universal-apple-darwin
+      - name: Tauri build
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -47,6 +47,8 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          args: --target universal-apple-darwin
       - name: Upload dmg artifact
         uses: actions/upload-artifact@v4
         with:
