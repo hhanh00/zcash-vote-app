@@ -1,4 +1,4 @@
-name: Rust CI Mac
+name: Rust CI Mac Universal
 
 on:
   workflow_dispatch:

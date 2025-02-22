@@ -15,6 +15,8 @@ jobs:
     steps:
     - name: Check out code
       uses: actions/checkout@v4
+    - name: Install Rust stable
+      uses: dtolnay/rust-toolchain@stable
     - uses: pnpm/action-setup@v4
       with:
         version: 10
