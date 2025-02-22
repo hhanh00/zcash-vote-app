@@ -20,7 +20,33 @@ jobs:
     - uses: pnpm/action-setup@v4
       with:
         version: 10
-    - name: Tauri build
+    - name: Install NDK
+      uses: nttld/setup-ndk@v1
+      id: setup-ndk
+      with:
+        ndk-version: r28
+    - name: Tauri init
       run: |
         pnpm install
         pnpm tauri icon
+        pnpm tauri android init
+      env:
+        NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+    - name: setup Android signing
+      run: |
+        cd src-tauri/gen/android
+        echo "keyAlias=zcash-vote" > keystore.properties
+        echo "password=${{ secrets.ANDROID_KEY_PASSWORD }}" >> keystore.properties
+        base64 -d <<< "${{ secrets.ANDROID_KEY_BASE64 }}" > $RUNNER_TEMP/keystore.jks
+        echo "storeFile=$RUNNER_TEMP/keystore.jks" >> keystore.properties
+    - name: Tauri build
+      run: |
+        pnpm tauri android build --apk
+      env:
+        NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        RANLIB: ${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ranlib
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: zcash-vote-app.apk
+        path: src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk
