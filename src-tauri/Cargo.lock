@@ -3433,7 +3433,7 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 [[package]]
 name = "orchard"
 version = "0.3.0"
-source = "git+https://github.com/hhanh00/orchard.git?rev=a2ec07c#a2ec07c1a61133a8c617df56b066931a1d017ec3"
+source = "git+https://github.com/hhanh00/orchard.git?rev=dff7dee#dff7dee3bb9490655e463cdccb3ca83884e2ec3a"
 dependencies = [
  "aes",
  "bincode",
@@ -6877,7 +6877,7 @@ dependencies = [
 [[package]]
 name = "zcash-vote"
 version = "0.1.1"
-source = "git+https://github.com/hhanh00/zcash-vote.git?rev=a467259#a46725963ef4715f9b8bac71ab7ce2395ce481db"
+source = "git+https://github.com/hhanh00/zcash-vote.git?rev=b2e3f15#b2e3f150fed508578428cfbcb87ad5cebe07d740"
 dependencies = [
  "anyhow",
  "bech32 0.9.1",

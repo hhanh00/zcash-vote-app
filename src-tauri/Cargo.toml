@@ -47,7 +47,7 @@ subtle = "2.4.1"
 tracing = "0.1.41"
 reqwest = { version = "0.11.27", features = ["json"] }
 
-zcash-vote = {git = "https://github.com/hhanh00/zcash-vote.git", rev="a467259"}
+zcash-vote = {git = "https://github.com/hhanh00/zcash-vote.git", rev="b2e3f15"}
 #zcash-vote = {path="../../zcash-vote"}
 orchard = "0.3.0"
 
@@ -55,7 +55,7 @@ orchard = "0.3.0"
 openssl = { version = "0.10.71", features = ["vendored"] }
 
 [patch.crates-io]
-orchard = {git = "https://github.com/hhanh00/orchard.git", rev="a2ec07c"}
+orchard = {git = "https://github.com/hhanh00/orchard.git", rev="dff7dee"}
 #orchard = {path = "../../orchard"}
 halo2_gadgets  = { git = "https://github.com/zcash/halo2.git", rev = "642924d614305d882cc122739c59144109f4bd3f" }
 halo2_proofs = { git = "https://github.com/zcash/halo2.git", rev = "642924d614305d882cc122739c59144109f4bd3f" }
