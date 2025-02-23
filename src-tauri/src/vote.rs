@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use tauri::State;
 use zcash_vote::{
-    address::VoteAddress, db::{list_notes, load_prop}, decrypt::{to_fvk, to_sk}, election::BALLOT_PK, trees::{list_cmxs, list_nf_ranges}
+    address::VoteAddress, db::{list_notes, load_prop}, decrypt::{to_fvk, to_sk}, election::{BALLOT_PK, BALLOT_VK}, trees::{list_cmxs, list_nf_ranges}
 };
 
 #[tauri::command]
@@ -63,6 +63,7 @@ pub async fn vote(
             &cmxs,
             &mut rng,
             &BALLOT_PK,
+            &BALLOT_VK,
         )?;
 
         let client = reqwest::Client::new();
