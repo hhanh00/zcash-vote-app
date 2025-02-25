@@ -35,7 +35,8 @@ pub async fn download_reference_data(
             let election = s.election.clone();
             (connection, election, fvk)
         };
-        let lwd_url = load_prop(&connection, "lwd")?.unwrap_or("https://zec.rocks".to_string());
+        let lwd_url = std::env::var("LWD_URL").unwrap_or("https://zec.rocks".to_string());
+        connection.execute("BEGIN TRANSACTION", [])?;
         let (connection, h) = zcash_vote::download::download_reference_data(
             connection,
             0,
@@ -48,6 +49,7 @@ pub async fn download_reference_data(
         )
         .await?;
         store_prop(&connection, "height", &h.to_string()).unwrap();
+        connection.execute("COMMIT", [])?;
         Ok::<_, Error>(())
     };
     r.await.map_err(|e| e.to_string())

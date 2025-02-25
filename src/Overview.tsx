@@ -18,6 +18,7 @@ import {
 import { Button } from "./components/ui/button";
 import { Progress } from "./components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "./components/ui/alert";
+import Swal from "sweetalert2";
 
 export const Overview: React.FC<ElectionProps> = ({ election }) => {
   const [height, setHeight] = useState<number | null | undefined>();
@@ -38,14 +39,22 @@ export const Overview: React.FC<ElectionProps> = ({ election }) => {
 
   const download = () => {
     (async () => {
-      const channel = new Channel<number>();
-      channel.onmessage = (h) => {
-        setHeight(h);
-      };
-      await invoke("download_reference_data", { channel: channel });
-      await invoke("sync");
-      const balance: number = await invoke("get_available_balance", {});
-      setBalance(balance / 100000);
+      try {
+        const channel = new Channel<number>();
+        channel.onmessage = (h) => {
+          setHeight(h);
+        };
+        await invoke("download_reference_data", { channel: channel });
+        await invoke("sync");
+        const balance: number = await invoke("get_available_balance", {});
+        setBalance(balance / 100000);
+      } catch (e: any) {
+        await invoke("reset");
+        await Swal.fire({
+          icon: "error",
+          title: e,
+        });
+      }
     })();
   };
 
@@ -61,8 +70,8 @@ export const Overview: React.FC<ElectionProps> = ({ election }) => {
     <div className="flex flex-col gap-4 items-center justify-center">
       <Card className="w-md p-2">
         <CardHeader>
-            <CardTitle>{election.name}</CardTitle>
-            <CardDescription>{election.question}</CardDescription>
+          <CardTitle>{election.name}</CardTitle>
+          <CardDescription>{election.question}</CardDescription>
         </CardHeader>
         <CardContent>
           <ul className="list-decimal">
