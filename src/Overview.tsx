@@ -23,6 +23,8 @@ import Swal from "sweetalert2";
 export const Overview: React.FC<ElectionProps> = ({ election }) => {
   const [height, setHeight] = useState<number | null | undefined>();
   const [balance, setBalance] = useState<number | undefined>();
+  const [id, setId] = useState<string | undefined>();
+
   useEffect(() => {
     (async () => {
       try {
@@ -34,6 +36,9 @@ export const Overview: React.FC<ElectionProps> = ({ election }) => {
 
       const balance: number = await invoke("get_available_balance", {});
       setBalance(balance / 100000);
+
+      const id: string = await invoke("get_election_id", { election: election })
+      setId(id)
     })();
   }, []);
 
@@ -68,6 +73,7 @@ export const Overview: React.FC<ElectionProps> = ({ election }) => {
 
   return (
     <div className="flex flex-col gap-4 items-center justify-center">
+      <div className="text-red-500">{id}</div>
       <Card className="w-md p-2">
         <CardHeader>
           <CardTitle>{election.name}</CardTitle>

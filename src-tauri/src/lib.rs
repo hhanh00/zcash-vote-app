@@ -33,6 +33,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             state::set_election,
             state::get_election,
+            state::get_election_id,
             state::save_db,
             state::open_db,
             address::get_address,
