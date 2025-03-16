@@ -37,6 +37,7 @@ export function Election() {
             return
 
         const rep: string = await invoke('http_get', { url: data.url })
+        console.log(rep)
         const election: Election = JSON.parse(rep)
 
         console.log(election)

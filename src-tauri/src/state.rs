@@ -71,15 +71,22 @@ pub fn open_db(path: String, state: State<Mutex<AppState>>) -> Result<(), String
 }
 
 #[tauri::command]
-pub fn set_election(url: String, election: Election, key: String, state: State<Mutex<AppState>>) {
+pub fn set_election(url: String, election: Election, key: String, state: State<Mutex<AppState>>) -> Result<(), String>  {
     let mut s = state.lock().unwrap();
     s.url = url.clone();
     s.election = election;
     s.key = key.clone();
+    Ok(())
 }
 
 #[tauri::command]
 pub fn get_election(state: State<Mutex<AppState>>) -> Election {
     let s = state.lock().unwrap();
     s.election.clone()
+}
+
+#[tauri::command]
+pub fn get_election_id(state: State<Mutex<AppState>>) -> String {
+    let s = state.lock().unwrap();
+    s.election.id()
 }
