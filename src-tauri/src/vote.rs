@@ -72,6 +72,8 @@ pub async fn vote(
 
         let client = reqwest::Client::new();
         let mut hash = String::new();
+        let mut error = String::new();
+        let mut success = false;
         for base_url in base_urls.iter() {
             let url = format!("{}/ballot", base_url);
             let rep = client
@@ -80,16 +82,24 @@ pub async fn vote(
                 .json(&ballot)
                 .send()
                 .await?;
-            let success = rep.status().is_success();
+            let s = rep.status().is_success();
             let res = rep.text().await?;
-            if !success {
-                anyhow::bail!(res);
+            if s {
+                success = true;
+            }
+            else {
+                tracing::info!("ERROR (transient): {error}");
+                error = res;
+                continue;
             }
 
             if hash.is_empty() {
                 hash = hex::encode(ballot.data.sighash()?);
                 crate::db::store_vote(&connection, &hash, &address, amount)?;
             }
+        }
+        if !success {
+            anyhow::bail!(error);
         }
         Ok::<_, Error>(hash)
     };
