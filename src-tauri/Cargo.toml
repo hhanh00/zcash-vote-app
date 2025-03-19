@@ -38,6 +38,7 @@ zcash_note_encryption = "0.2.0"
 zcash_primitives = "0.10.2"
 pasta_curves = "0.5.1"
 incrementalmerkletree = "0.3.1"
+rand = "0.9"
 rand_core = "0.6.4"
 hex = {version = "0.4.3", features = ["serde"] }
 blake2b_simd = "1.0.2"

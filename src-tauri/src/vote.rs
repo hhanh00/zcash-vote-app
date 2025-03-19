@@ -5,7 +5,11 @@ use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use tauri::State;
 use zcash_vote::{
-    address::VoteAddress, db::{list_notes, load_prop}, decrypt::{to_fvk, to_sk}, election::{BALLOT_PK, BALLOT_VK}, trees::{list_cmxs, list_nf_ranges}
+    address::VoteAddress,
+    db::{list_notes, load_prop},
+    decrypt::{to_fvk, to_sk},
+    election::{BALLOT_PK, BALLOT_VK},
+    trees::{list_cmxs, list_nf_ranges},
 };
 
 #[tauri::command]
@@ -35,15 +39,15 @@ pub async fn vote(
     state: State<'_, Mutex<AppState>>,
 ) -> Result<String, String> {
     let r = async {
-        let (pool, base_url, sk, fvk, domain, signature_required) = {
+        let (pool, base_urls, sk, fvk, domain, signature_required) = {
             let state = state.lock().unwrap();
             let pool = state.pool.clone();
-            let base_url = state.url.clone();
+            let base_urls = state.urls.clone();
             let sk = to_sk(&state.key)?;
             let fvk = to_fvk(&state.key)?;
             let domain = state.election.domain();
             let signature_required = state.election.signature_required;
-            (pool, base_url, sk, fvk, domain, signature_required)
+            (pool, base_urls, sk, fvk, domain, signature_required)
         };
         let mut rng = rand_core::OsRng;
         let vaddress = VoteAddress::decode(&address)?;
@@ -67,21 +71,36 @@ pub async fn vote(
         )?;
 
         let client = reqwest::Client::new();
-        let url = format!("{}/ballot", base_url);
-        let rep = client
-            .post(url)
-            .header(CONTENT_TYPE, "application/json")
-            .json(&ballot)
-            .send()
-            .await?;
-        let success = rep.status().is_success();
-        let res = rep.text().await?;
-        if !success {
-            anyhow::bail!(res);
-        }
+        let mut hash = String::new();
+        let mut error = String::new();
+        let mut success = false;
+        for base_url in base_urls.iter() {
+            let url = format!("{}/ballot", base_url);
+            let rep = client
+                .post(url)
+                .header(CONTENT_TYPE, "application/json")
+                .json(&ballot)
+                .send()
+                .await?;
+            let s = rep.status().is_success();
+            let res = rep.text().await?;
+            if s {
+                success = true;
+            }
+            else {
+                tracing::info!("ERROR (transient): {error}");
+                error = res;
+                continue;
+            }
 
-        let hash = hex::encode(ballot.data.sighash()?);
-        crate::db::store_vote(&connection, &hash, &address, amount)?;
+            if hash.is_empty() {
+                hash = hex::encode(ballot.data.sighash()?);
+                crate::db::store_vote(&connection, &hash, &address, amount)?;
+            }
+        }
+        if !success {
+            anyhow::bail!(error);
+        }
         Ok::<_, Error>(hash)
     };
 
