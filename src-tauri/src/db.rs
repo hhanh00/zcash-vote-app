@@ -27,8 +27,9 @@ pub fn store_election(
     Ok(())
 }
 
-pub fn load_election(connection: &Connection) -> Result<(String, Election, String)> {
-    let url = load_prop(connection, "url")?.expect("Missing URL");
+pub fn load_election(connection: &Connection) -> Result<(Vec<String>, Election, String)> {
+    let urls = load_prop(connection, "url")?.expect("Missing URL");
+    let url = urls.split(",").into_iter().map(String::from).collect();
     let election = load_prop(connection, "election")?.expect("Missing election property");
     let key = load_prop(connection, "key")?.expect("Missing wallet key");
     let election: Election = serde_json::from_str(&election)?;

@@ -60,7 +60,8 @@ pub async fn sync(state: State<'_, Mutex<AppState>>) -> Result<(), String> {
     let rep = async {
         let (base_url, pool) = {
             let s = state.lock().unwrap();
-            (s.url.clone(), s.pool.clone())
+            let index = rand::random_range(0..s.urls.len());
+            (s.urls[index].clone(), s.pool.clone())
         };
         let connection = pool.get()?;
         let r = connection.query_row("SELECT 1 FROM cmxs", [], |_| Ok(())).optional()?;

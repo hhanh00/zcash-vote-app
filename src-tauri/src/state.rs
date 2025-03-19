@@ -10,7 +10,7 @@ use zcash_vote::{db::create_schema, election::Election};
 use crate::db::{load_election, store_election};
 
 pub struct AppState {
-    pub url: String,
+    pub urls: Vec<String>,
     pub election: Election,
     pub key: String,
     pub pool: r2d2::Pool<SqliteConnectionManager>,
@@ -19,7 +19,7 @@ pub struct AppState {
 impl Default for AppState {
     fn default() -> Self {
         Self {
-            url: Default::default(),
+            urls: Default::default(),
             election: Default::default(),
             key: Default::default(),
             pool: Pool::new(SqliteConnectionManager::memory()).unwrap(),
@@ -47,7 +47,8 @@ pub fn save_db(path: String, state: State<Mutex<AppState>>) -> Result<(), String
         let manager = SqliteConnectionManager::file(&path);
         let pool = Pool::new(manager)?;
         let connection = pool.get()?;
-        store_election(&connection, &s.url, &s.election, &s.key)?;
+        let urls_delim = s.urls.join(",");
+        store_election(&connection, &urls_delim, &s.election, &s.key)?;
         s.pool = pool;
         Ok::<_, Error>(())
     })()
@@ -60,8 +61,8 @@ pub fn open_db(path: String, state: State<Mutex<AppState>>) -> Result<(), String
         let mut s = state.lock().unwrap();
         let pool = Pool::new(SqliteConnectionManager::file(path))?;
         let connection = pool.get()?;
-        let (url, election, key) = load_election(&connection)?;
-        s.url = url;
+        let (urls, election, key) = load_election(&connection)?;
+        s.urls = urls;
         s.election = election;
         s.key = key;
         s.pool = pool;
@@ -71,9 +72,9 @@ pub fn open_db(path: String, state: State<Mutex<AppState>>) -> Result<(), String
 }
 
 #[tauri::command]
-pub fn set_election(url: String, election: Election, key: String, state: State<Mutex<AppState>>) -> Result<(), String>  {
+pub fn set_election(urls: String, election: Election, key: String, state: State<Mutex<AppState>>) -> Result<(), String>  {
     let mut s = state.lock().unwrap();
-    s.url = url.clone();
+    s.urls = urls.split(",").into_iter().map(String::from).collect();
     s.election = election;
     s.key = key.clone();
     Ok(())
