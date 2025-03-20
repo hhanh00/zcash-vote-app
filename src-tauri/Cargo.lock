@@ -7015,6 +7015,8 @@ dependencies = [
  "zcash_address 0.2.1",
  "zcash_note_encryption 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "zcash_primitives 0.10.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "zeroize",
+ "zeroize_derive",
 ]
 
 [[package]]
