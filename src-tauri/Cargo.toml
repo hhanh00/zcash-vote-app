@@ -47,6 +47,8 @@ lazy_static = "1.5.0"
 subtle = "2.4.1"
 tracing = "0.1.41"
 reqwest = { version = "0.11.27", features = ["json"] }
+zeroize = "1.8.1"
+zeroize_derive = "1.4.1"
 
 zcash-vote = {git = "https://github.com/hhanh00/zcash-vote.git", rev="8b42736"}
 #zcash-vote = {path="../../zcash-vote"}

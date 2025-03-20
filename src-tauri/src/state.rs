@@ -6,14 +6,16 @@ use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::Connection;
 use tauri::State;
 use zcash_vote::{db::create_schema, election::Election};
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::db::{load_election, store_election};
 
+#[derive(Zeroize, ZeroizeOnDrop)]
 pub struct AppState {
     pub urls: Vec<String>,
-    pub election: Election,
+    #[zeroize(skip)] pub election: Election,
     pub key: String,
-    pub pool: r2d2::Pool<SqliteConnectionManager>,
+    #[zeroize(skip)] pub pool: r2d2::Pool<SqliteConnectionManager>,
 }
 
 impl Default for AppState {
