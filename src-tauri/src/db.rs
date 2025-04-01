@@ -7,7 +7,7 @@ use zcash_vote::{
     db::{load_prop, store_prop},
     election::Election,
 };
-use orchard::vote::Ballot;
+use orchard::{keys::Scope, vote::Ballot};
 
 use crate::state::AppState;
 
@@ -16,6 +16,7 @@ pub fn store_election(
     url: &str,
     election: &Election,
     key: &str,
+    internal: &str,
 ) -> Result<()> {
     store_prop(connection, "url", url)?;
     store_prop(
@@ -24,16 +25,23 @@ pub fn store_election(
         &serde_json::to_string(election).unwrap(),
     )?;
     store_prop(connection, "key", key)?;
+    store_prop(connection, "internal", internal)?;
     Ok(())
 }
 
-pub fn load_election(connection: &Connection) -> Result<(Vec<String>, Election, String)> {
+pub fn load_election(connection: &Connection) -> Result<(Vec<String>, Election, String, Scope)> {
     let urls = load_prop(connection, "url")?.expect("Missing URL");
     let url = urls.split(",").into_iter().map(String::from).collect();
     let election = load_prop(connection, "election")?.expect("Missing election property");
     let key = load_prop(connection, "key")?.expect("Missing wallet key");
+    let internal = load_prop(connection, "internal")?.unwrap_or("false".to_string());
     let election: Election = serde_json::from_str(&election)?;
-    Ok((url, election, key))
+    let scope = if internal == "true" {
+        Scope::Internal
+    } else {
+        Scope::External
+    };
+    Ok((url, election, key, scope))
 }
 
 #[tauri::command]
