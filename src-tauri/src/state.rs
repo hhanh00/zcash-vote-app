@@ -1,6 +1,7 @@
 use std::{fs::remove_file, sync::Mutex};
 
 use anyhow::Error;
+use orchard::keys::Scope;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::Connection;
@@ -15,6 +16,7 @@ pub struct AppState {
     pub urls: Vec<String>,
     #[zeroize(skip)] pub election: Election,
     pub key: String,
+    #[zeroize(skip)] pub scope: Scope,
     #[zeroize(skip)] pub pool: r2d2::Pool<SqliteConnectionManager>,
 }
 
@@ -24,6 +26,7 @@ impl Default for AppState {
             urls: Default::default(),
             election: Default::default(),
             key: Default::default(),
+            scope: Scope::External,
             pool: Pool::new(SqliteConnectionManager::memory()).unwrap(),
         }
     }
@@ -50,7 +53,12 @@ pub fn save_db(path: String, state: State<Mutex<AppState>>) -> Result<(), String
         let pool = Pool::new(manager)?;
         let connection = pool.get()?;
         let urls_delim = s.urls.join(",");
-        store_election(&connection, &urls_delim, &s.election, &s.key)?;
+        let internal = if s.scope == Scope::Internal {
+            "true"
+        } else {
+            "false"
+        };
+        store_election(&connection, &urls_delim, &s.election, &s.key, internal)?;
         s.pool = pool;
         Ok::<_, Error>(())
     })()
@@ -63,22 +71,28 @@ pub fn open_db(path: String, state: State<Mutex<AppState>>) -> Result<(), String
         let mut s = state.lock().unwrap();
         let pool = Pool::new(SqliteConnectionManager::file(path))?;
         let connection = pool.get()?;
-        let (urls, election, key) = load_election(&connection)?;
+        let (urls, election, key, scope) = load_election(&connection)?;
         s.urls = urls;
         s.election = election;
         s.key = key;
         s.pool = pool;
+        s.scope = scope;
         Ok::<_, Error>(())
     })()
     .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn set_election(urls: String, election: Election, key: String, state: State<Mutex<AppState>>) -> Result<(), String>  {
+pub fn set_election(urls: String, election: Election, key: String, internal: bool, state: State<Mutex<AppState>>) -> Result<(), String>  {
     let mut s = state.lock().unwrap();
     s.urls = urls.split(",").into_iter().map(String::from).collect();
     s.election = election;
     s.key = key.clone();
+    if internal {
+        s.scope = Scope::Internal;
+    } else {
+        s.scope = Scope::External;
+    }
     Ok(())
 }
 

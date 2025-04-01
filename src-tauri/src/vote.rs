@@ -39,20 +39,21 @@ pub async fn vote(
     state: State<'_, Mutex<AppState>>,
 ) -> Result<String, String> {
     let r = async {
-        let (pool, base_urls, sk, fvk, domain, signature_required) = {
+        let (pool, base_urls, sk, fvk, scope, domain, signature_required) = {
             let state = state.lock().unwrap();
             let pool = state.pool.clone();
             let base_urls = state.urls.clone();
             let sk = to_sk(&state.key)?;
             let fvk = to_fvk(&state.key)?;
+            let scope = state.scope;
             let domain = state.election.domain();
             let signature_required = state.election.signature_required;
-            (pool, base_urls, sk, fvk, domain, signature_required)
+            (pool, base_urls, sk, fvk, scope, domain, signature_required)
         };
         let mut rng = rand_core::OsRng;
         let vaddress = VoteAddress::decode(&address)?;
         let connection = pool.get()?;
-        let notes = list_notes(&connection, 0, &fvk)?;
+        let notes = list_notes(&connection, 0, &fvk, scope)?;
         let cmxs = list_cmxs(&connection)?;
         let nfs = list_nf_ranges(&connection)?;
         let ballot = orchard::vote::vote(

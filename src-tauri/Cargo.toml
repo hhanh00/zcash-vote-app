@@ -50,7 +50,7 @@ reqwest = { version = "0.11.27", features = ["json"] }
 zeroize = "1.8.1"
 zeroize_derive = "1.4.1"
 
-zcash-vote = {git = "https://github.com/hhanh00/zcash-vote.git", rev="8b42736"}
+zcash-vote = {git = "https://github.com/hhanh00/zcash-vote.git", rev="346ce2d"}
 #zcash-vote = {path="../../zcash-vote"}
 orchard = "0.3.0"
 

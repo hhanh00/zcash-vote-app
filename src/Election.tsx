@@ -7,27 +7,40 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 
-type FormValues = {
-  urls: string;
-  key: string;
-};
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+const FormSchema = z.object({
+  urls: z.string().min(1, "URL is required"),
+  key: z.string().min(1, "Key is required"),
+  internal: z.boolean().default(false),
+});
 
 export function Election() {
   const navigate = useNavigate();
   const [openModal, setOpenModal] = useState(false);
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm({
+  const form = useForm<z.infer<typeof FormSchema>>({
+    resolver: zodResolver(FormSchema),
     defaultValues: {
       urls: "",
       key: "",
     },
   });
 
-  const onCloseModal: SubmitHandler<FormValues> = async (data) => {
+  const onCloseModal: SubmitHandler<z.infer<typeof FormSchema>> = async (
+    data
+  ) => {
     console.log(data);
 
     setOpenModal(false);
@@ -45,6 +58,7 @@ export function Election() {
       urls: data.urls,
       election: election,
       key: data.key,
+      internal: data.internal,
     });
     const name = election.name;
 
@@ -99,49 +113,59 @@ export function Election() {
 
         <Dialog open={openModal} onOpenChange={(c) => setOpenModal(c)}>
           <DialogContent>
-            <form
-              className="flex flex-col gap-4"
-              onSubmit={handleSubmit(onCloseModal)}
-            >
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="url">Election URL</Label>
-                <Controller
+            <Form {...form}>
+              <form
+                onSubmit={form.handleSubmit(onCloseModal)}
+                className="w-full space-y-6"
+              >
+                <h3 className="mb-4 text-lg font-medium">New Election</h3>
+                <FormField
+                  control={form.control}
                   name="urls"
-                  control={control}
-                  rules={{
-                    validate: validateURLs,
-                  }}
                   render={({ field }) => (
-                    <Input
-                      autoFocus
-                      type="url"
-                      {...field}
-                      color={errors.urls && "failure"}
-                    />
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <FormLabel>Election URL</FormLabel>
+                      <FormControl>
+                        <Input autoFocus type="url" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
                 />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="key">Wallet Seed or Viewing Key</Label>
-                <Controller
+                <FormField
+                  control={form.control}
                   name="key"
-                  control={control}
-                  rules={{
-                    validate: validateKey,
-                  }}
                   render={({ field }) => (
-                    <Input
-                      type="key"
-                      {...field}
-                      color={errors.key && "failure"}
-                    />
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <FormLabel>Seed Phrase</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
                 />
-              </div>
-              <div className="w-full gap-8">
-                <Button type="submit">Save Election</Button>
-              </div>
-            </form>
+                <FormField
+                  control={form.control}
+                  name="internal"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <FormLabel>Zashi Internal Wallet</FormLabel>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <div className="w-full gap-8">
+                  <Button type="submit">Save Election</Button>
+                </div>
+              </form>
+            </Form>
           </DialogContent>
         </Dialog>
       </div>
