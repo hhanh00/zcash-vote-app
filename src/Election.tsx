@@ -1,17 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { useState } from "react";
-import { Controller, SubmitHandler, useForm } from "react-hook-form";
+import { SubmitHandler, useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -22,8 +20,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 const FormSchema = z.object({
-  urls: z.string().min(1, "URL is required"),
-  key: z.string().min(1, "Key is required"),
+  urls: z.string().min(1, "URL is required").refine(validateURLs, {
+    message:
+      "URLS must be a comma separated list of valid URLs",
+  }),
+  key: z.string().min(1, "Key is required").refine(validateKey, {
+    message:
+      "Key must be either a 24 seed phrase or a unified viewing key with an Orchard receiver",
+  }),
   internal: z.boolean().default(false),
 });
 
@@ -180,15 +184,12 @@ async function validateURLs(urlsDelimited: string) {
       await invoke("http_get", { url: url });
     }
   } catch {
-    return "Invalid URL(s)";
+    return false;
   }
   return true;
 }
 
 async function validateKey(key: string) {
   const isValid: boolean = await invoke("validate_key", { key: key });
-  return (
-    isValid ||
-    "Invalid Key. Key must be either a 24 seed phrase or a unified viewing key with an Orchard receiver"
-  );
+  return isValid;
 }
