@@ -32,7 +32,7 @@ const voteSchema = z.object({
 
 export const Vote: React.FC<ElectionProps> = ({ election }) => {
   const navigate = useNavigate();
-  const [voting, setVoting] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const form = useForm<z.infer<typeof voteSchema>>({
     resolver: zodResolver(voteSchema),
@@ -44,7 +44,7 @@ export const Vote: React.FC<ElectionProps> = ({ election }) => {
   const { control, handleSubmit } = form;
 
   const onSubmit: SubmitHandler<Vote> = (vote) => {
-    setVoting(true);
+    setBusy(true);
     (async () => {
       try {
         vote.amount = Math.floor(vote.amount * 100000);
@@ -62,7 +62,7 @@ export const Vote: React.FC<ElectionProps> = ({ election }) => {
           title: e,
         });
       } finally {
-        setVoting(false);
+        setBusy(false);
       }
     })();
   };
@@ -135,7 +135,7 @@ export const Vote: React.FC<ElectionProps> = ({ election }) => {
           </form>
         </Form>
       </Card>
-      {voting && (
+      {busy && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <Spinner />
       </div>
