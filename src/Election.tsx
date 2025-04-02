@@ -154,7 +154,7 @@ export function Election() {
                   name="internal"
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                      <FormLabel>Zashi Internal Wallet</FormLabel>
+                      <FormLabel>Internal Wallet</FormLabel>
                       <FormControl>
                         <Switch
                           checked={field.value}
