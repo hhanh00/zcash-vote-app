@@ -2,7 +2,7 @@
   "packages": {
     ".": {
       "package-name": "src-tauri",
-      "release-type": "simple",
+      "release-type": "generic",
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
