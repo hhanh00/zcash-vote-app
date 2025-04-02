@@ -1,7 +1,6 @@
 {
   "packages": {
     ".": {
-      "package-name": "src-tauri",
       "release-type": "simple",
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
