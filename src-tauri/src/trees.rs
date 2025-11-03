@@ -27,7 +27,7 @@ pub fn compute_roots(state: State<Mutex<AppState>>) -> Result<(), String> {
 pub fn compute_nf_root(connection: &Connection) -> Result<Vec<u8>> {
     let nf_tree = list_nf_ranges(connection)?;
     let (nf_root, _) = calculate_merkle_paths(0, &[], &nf_tree);
-    store_prop(connection, "nf_root", &hex::encode(&nf_root.to_repr()))?;
+    store_prop(connection, "nf_root", &hex::encode(nf_root.to_repr()))?;
 
     Ok(nf_root.to_repr().to_vec())
 }
@@ -36,7 +36,7 @@ pub fn compute_nf_root(connection: &Connection) -> Result<Vec<u8>> {
 pub fn compute_cmx_root(connection: &Connection) -> Result<Vec<u8>> {
     let cmx_tree = list_cmxs(connection)?;
     let (cmx_root, _) = calculate_merkle_paths(0, &[], &cmx_tree);
-    store_prop(connection, "cmx_root", &hex::encode(&cmx_root.to_repr()))?;
+    store_prop(connection, "cmx_root", &hex::encode(cmx_root.to_repr()))?;
 
     Ok(cmx_root.to_repr().to_vec())
 }

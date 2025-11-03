@@ -85,7 +85,7 @@ pub fn open_db(path: String, state: State<Mutex<AppState>>) -> Result<(), String
 #[tauri::command]
 pub fn set_election(urls: String, election: Election, key: String, internal: bool, state: State<Mutex<AppState>>) -> Result<(), String>  {
     let mut s = state.lock().unwrap();
-    s.urls = urls.split(",").into_iter().map(String::from).collect();
+    s.urls = urls.split(",").map(String::from).collect();
     s.election = election;
     s.key = key.clone();
     if internal {

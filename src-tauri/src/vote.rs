@@ -50,7 +50,7 @@ pub async fn vote(
             let signature_required = state.election.signature_required;
             (pool, base_urls, sk, fvk, scope, domain, signature_required)
         };
-        let mut rng = rand_core::OsRng;
+        let rng = rand_core::OsRng;
         let vaddress = VoteAddress::decode(&address)?;
         let connection = pool.get()?;
         let notes = list_notes(&connection, 0, &fvk, scope)?;
@@ -66,7 +66,7 @@ pub async fn vote(
             &notes,
             &nfs,
             &cmxs,
-            &mut rng,
+            rng,
             &BALLOT_PK,
             &BALLOT_VK,
         )?;
