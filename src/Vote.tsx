@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 import { SetElectionMessage } from "./SetElectionMessage";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { useState } from "react";
@@ -33,6 +33,7 @@ const voteSchema = z.object({
 export const Vote: React.FC<ElectionProps> = ({ election }) => {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
 
   const form = useForm<z.infer<typeof voteSchema>>({
     resolver: zodResolver(voteSchema),
@@ -48,7 +49,11 @@ export const Vote: React.FC<ElectionProps> = ({ election }) => {
     (async () => {
       try {
         vote.amount = Math.floor(vote.amount * 100000);
-        const hash: string = await invoke("vote", vote);
+        const voteChannel = new Channel<string>();
+        voteChannel.onmessage = (m) => {
+          setMessage(m);
+        };
+        const hash: string = await invoke("vote", { channel: voteChannel, ...vote });
         await Swal.fire({
           icon: "success",
           title: hash,
@@ -136,6 +141,7 @@ export const Vote: React.FC<ElectionProps> = ({ election }) => {
       </Card>
       {busy && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div>{message}&nbsp;</div>
         <Spinner />
       </div>
     )}
