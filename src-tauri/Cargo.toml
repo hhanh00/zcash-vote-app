@@ -58,7 +58,7 @@ orchard = "0.3.0"
 openssl = { version = "0.10.71", features = ["vendored"] }
 
 [patch.crates-io]
-orchard = {git = "https://github.com/hhanh00/orchard.git", rev="dff7dee"}
+orchard = {git = "https://github.com/hhanh00/orchard.git", rev="2777db4ab644ffcc6d589f8a4fcdd070a19fc722"}
 #orchard = {path = "../../orchard"}
 halo2_gadgets  = { git = "https://github.com/zcash/halo2.git", rev = "642924d614305d882cc122739c59144109f4bd3f" }
 halo2_proofs = { git = "https://github.com/zcash/halo2.git", rev = "642924d614305d882cc122739c59144109f4bd3f" }

@@ -3,7 +3,7 @@ use anyhow::{Error, Result};
 use reqwest::header::CONTENT_TYPE;
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
-use tauri::State;
+use tauri::{ipc::Channel, State};
 use zcash_vote::{
     address::VoteAddress,
     db::{list_notes, load_prop},
@@ -36,6 +36,7 @@ pub fn get_available_balance(state: State<'_, Mutex<AppState>>) -> Result<u64, S
 pub async fn vote(
     address: String,
     amount: u64,
+    channel: Channel<String>,
     state: State<'_, Mutex<AppState>>,
 ) -> Result<String, String> {
     let r = async {
@@ -67,6 +68,9 @@ pub async fn vote(
             &nfs,
             &cmxs,
             rng,
+            |m| {
+                let _ = channel.send(m);
+            },
             &BALLOT_PK,
             &BALLOT_VK,
         )?;
@@ -87,8 +91,7 @@ pub async fn vote(
             let res = rep.text().await?;
             if s {
                 success = true;
-            }
-            else {
+            } else {
                 tracing::info!("ERROR (transient): {error}");
                 error = res;
                 continue;

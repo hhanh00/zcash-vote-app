@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { SetElectionMessage } from "./SetElectionMessage";
@@ -34,6 +34,7 @@ export const Delegate: React.FC<ElectionProps> = ({ election }) => {
   const navigate = useNavigate();
   const [address, setAddress] = useState<string | undefined>();
   const [voting, setVoting] = useState(false);
+  const [message, setMessage] = useState<string>("");
 
   useEffect(() => {
     (async () => {
@@ -56,7 +57,11 @@ export const Delegate: React.FC<ElectionProps> = ({ election }) => {
     (async () => {
       try {
         delegation.amount = Math.floor(delegation.amount * 100000);
-        const hash: string = await invoke("vote", delegation);
+        const channel = new Channel<string>();
+        channel.onmessage = (m) => {
+          setMessage(m);
+        };
+        const hash: string = await invoke("vote", {channel: channel, ...delegation});
         await Swal.fire({
           icon: "success",
           title: hash,
@@ -140,6 +145,7 @@ export const Delegate: React.FC<ElectionProps> = ({ election }) => {
       </Form>
       {voting && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div>{message}&nbsp;</div>
         <Spinner />
       </div>
     )}
