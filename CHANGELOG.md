@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.0](https://github.com/hhanh00/zcash-vote-app/compare/v1.3.0...v1.4.0) (2025-11-03)
+
+
+### Features
+
+* add progress messages to vote/delegate ([#76](https://github.com/hhanh00/zcash-vote-app/issues/76)) ([bd71433](https://github.com/hhanh00/zcash-vote-app/commit/bd714333f16b67c774d7b47f9ed4600734a43574))
+
+
+### Bug Fixes
+
+* add progress to sync ([#74](https://github.com/hhanh00/zcash-vote-app/issues/74)) ([203b091](https://github.com/hhanh00/zcash-vote-app/commit/203b091503b99dd29b0ca2ac10506217e4f31457))
+* clippy warnings ([#73](https://github.com/hhanh00/zcash-vote-app/issues/73)) ([7eb49bc](https://github.com/hhanh00/zcash-vote-app/commit/7eb49bc1a21c7e1c866b4fdc92acad5622c08cbd))
+
 ## [1.3.0](https://github.com/hhanh00/zcash-vote-app/compare/v1.2.0...v1.3.0) (2025-04-02)
 
 
