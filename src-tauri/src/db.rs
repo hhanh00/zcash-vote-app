@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use anyhow::{Error, Result};
+use anyhow::Result;
 use rusqlite::{params, Connection};
 use tauri::State;
 use zcash_vote::{
@@ -31,7 +31,7 @@ pub fn store_election(
 
 pub fn load_election(connection: &Connection) -> Result<(Vec<String>, Election, String, Scope)> {
     let urls = load_prop(connection, "url")?.expect("Missing URL");
-    let url = urls.split(",").into_iter().map(String::from).collect();
+    let url = urls.split(",").map(String::from).collect();
     let election = load_prop(connection, "election")?.expect("Missing election property");
     let key = load_prop(connection, "key")?.expect("Missing wallet key");
     let internal = load_prop(connection, "internal")?.unwrap_or("false".to_string());
@@ -47,7 +47,7 @@ pub fn load_election(connection: &Connection) -> Result<(Vec<String>, Election, 
 #[tauri::command]
 pub fn get_prop(name: String, state: State<Mutex<AppState>>) -> Result<Option<String>, String> {
     tauri_export!(state, connection, {
-        Ok::<_, Error>(load_prop(&connection, &name)?)
+        load_prop(&connection, &name)
     })
 }
 

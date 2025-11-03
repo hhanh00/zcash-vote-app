@@ -15,14 +15,14 @@ use zcash_vote::{
 use crate::{db::mark_spent, state::AppState};
 
 #[tauri::command]
-pub fn validate_key(key: String) -> Result<bool, ()> {
+pub fn validate_key(key: String) -> bool {
     if Mnemonic::from_phrase(&key).is_ok() {
-        return Ok(true);
+        return true;
     }
     if zcash_address::unified::Ufvk::decode(&key).is_ok() {
-        return Ok(true);
+        return true;
     }
-    Ok(false)
+    false
 }
 
 #[tauri::command]
