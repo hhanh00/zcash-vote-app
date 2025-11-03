@@ -23,6 +23,7 @@ import { Spinner } from "./Spinner";
 
 export const Overview: React.FC<ElectionProps> = ({ election }) => {
   const [height, setHeight] = useState<number | null | undefined>();
+  const [message, setMessage] = useState<string | null | undefined>();
   const [balance, setBalance] = useState<number | undefined>();
   const [id, setId] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
@@ -31,7 +32,11 @@ export const Overview: React.FC<ElectionProps> = ({ election }) => {
     (async () => {
       try {
         setBusy(true);
-        await invoke("sync");
+        const syncChannel = new Channel<string>();
+        syncChannel.onmessage = (m) => {
+          setMessage(m);
+        };
+        await invoke("sync", { channel: syncChannel });
       } catch {
       } finally {
         setBusy(false);
@@ -53,12 +58,16 @@ export const Overview: React.FC<ElectionProps> = ({ election }) => {
   const download = () => {
     (async () => {
       try {
-        const channel = new Channel<number>();
-        channel.onmessage = (h) => {
+        const heightChannel = new Channel<number>();
+        heightChannel.onmessage = (h) => {
           setHeight(h);
         };
-        await invoke("download_reference_data", { channel: channel });
-        await invoke("sync");
+        await invoke("download_reference_data", { channel: heightChannel });
+        const syncChannel = new Channel<string>();
+        syncChannel.onmessage = (m) => {
+          setMessage(m);
+        };
+        await invoke("sync", { channel: syncChannel });
         const balance: number = await invoke("get_available_balance", {});
         setBalance(balance / 100000);
       } catch (e: any) {
@@ -117,10 +126,11 @@ export const Overview: React.FC<ElectionProps> = ({ election }) => {
               </AccordionItem>
             </Accordion>
             {typeof height !== "number" && (
-              <Button onClick={download}>Download Blockchain Data</Button>
+              <Button onClick={download}>Synchronize</Button>
             )}
             {progressPct && <Progress value={progressPct}></Progress>}
             <div className="text-xs">Current height: {height}</div>
+            <div className="text-md">{message}</div>
             <div className="text-xl font-semibold text-red-600 dark:text-white">
               Available Voting Power: {balance ?? "N/A - Download first"}
             </div>

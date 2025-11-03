@@ -58,7 +58,7 @@ pub async fn download_reference_data(
 }
 
 #[tauri::command]
-pub async fn sync(state: State<'_, Mutex<AppState>>) -> Result<(), String> {
+pub async fn sync(state: State<'_, Mutex<AppState>>, channel: Channel<String>) -> Result<(), String> {
     let rep = async {
         let (base_url, pool) = {
             let s = state.lock().unwrap();
@@ -73,9 +73,11 @@ pub async fn sync(state: State<'_, Mutex<AppState>>) -> Result<(), String> {
         let url = format!("{}/num_ballots", base_url);
         let n = reqwest::get(url).await?.text().await?;
         let n = n.parse::<u32>()?;
+        channel.send(format!("Total number of ballots: {n}"))?;
         let election = load_prop(&connection, "election")?.unwrap();
         let election = serde_json::from_str::<Election>(&election)?;
         let c = connection.query_row("SELECT COUNT(*) FROM ballots", [], |r| r.get::<_, u32>(0))?;
+        channel.send(format!("Current: {c} out of {n}"))?;
         if c < n {
             for i in c..n {
                 let url = format!("{}/ballot/height/{}", base_url, i + 1);
@@ -88,6 +90,7 @@ pub async fn sync(state: State<'_, Mutex<AppState>>) -> Result<(), String> {
                 transaction.commit()?;
             }
         }
+        channel.send("Ballot Sync completed".to_string())?;
 
         Ok::<_, Error>(())
     };
