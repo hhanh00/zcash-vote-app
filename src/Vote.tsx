@@ -49,7 +49,6 @@ export const Vote: React.FC<ElectionProps> = ({ election }) => {
       try {
         vote.amount = Math.floor(vote.amount * 100000);
         const hash: string = await invoke("vote", vote);
-        console.log(hash);
         await Swal.fire({
           icon: "success",
           title: hash,
