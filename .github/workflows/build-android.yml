@@ -41,7 +41,7 @@ jobs:
         echo "storeFile=$RUNNER_TEMP/keystore.jks" >> keystore.properties
     - name: Tauri build
       run: |
-        pnpm tauri android build --apk
+        pnpm tauri android build --apk true
       env:
         NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         RANLIB: ${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ranlib
