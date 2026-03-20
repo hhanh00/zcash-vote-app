@@ -18,6 +18,8 @@ pub struct AppState {
     pub key: String,
     #[zeroize(skip)] pub scope: Scope,
     #[zeroize(skip)] pub pool: r2d2::Pool<SqliteConnectionManager>,
+    #[zeroize(skip)] pub enable_tree_cache: bool,
+    #[zeroize(skip)] pub enable_tree_warmup: bool,
 }
 
 impl Default for AppState {
@@ -28,6 +30,12 @@ impl Default for AppState {
             key: Default::default(),
             scope: Scope::External,
             pool: Pool::new(SqliteConnectionManager::memory()).unwrap(),
+            enable_tree_cache: std::env::var("ZV_ENABLE_TREE_CACHE")
+                .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+                .unwrap_or(true),
+            enable_tree_warmup: std::env::var("ZV_ENABLE_TREE_WARMUP")
+                .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+                .unwrap_or(true),
         }
     }
 }

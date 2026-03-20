@@ -10,7 +10,7 @@ use zcash_vote::{
     election::Election,
 };
 
-use crate::{db::store_ballot, state::AppState, validate::handle_ballot};
+use crate::{db::store_ballot, state::AppState, trees::mark_tree_cache_dirty, validate::handle_ballot};
 
 #[tauri::command]
 pub async fn http_get(url: String) -> Result<String, String> {
@@ -51,6 +51,7 @@ pub async fn download_reference_data(
         )
         .await?;
         store_prop(&connection, "height", &h.to_string()).unwrap();
+        mark_tree_cache_dirty(&connection)?;
         connection.execute("COMMIT", [])?;
         Ok::<_, Error>(())
     };
@@ -78,6 +79,7 @@ pub async fn sync(state: State<'_, Mutex<AppState>>, channel: Channel<String>) -
         let election = serde_json::from_str::<Election>(&election)?;
         let c = connection.query_row("SELECT COUNT(*) FROM ballots", [], |r| r.get::<_, u32>(0))?;
         channel.send(format!("Current: {c} out of {n}"))?;
+        let mut changed = false;
         if c < n {
             for i in c..n {
                 let url = format!("{}/ballot/height/{}", base_url, i + 1);
@@ -88,7 +90,11 @@ pub async fn sync(state: State<'_, Mutex<AppState>>, channel: Channel<String>) -
                 handle_ballot(&transaction, &election, i + 1, &ballot)?;
                 store_ballot(&transaction, i + 1, &ballot)?;
                 transaction.commit()?;
+                changed = true;
             }
+        }
+        if changed {
+            mark_tree_cache_dirty(&connection)?;
         }
         channel.send("Ballot Sync completed".to_string())?;
 
