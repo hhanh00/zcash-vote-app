@@ -11,6 +11,7 @@ use zcash_vote::{
     election::{BALLOT_PK, BALLOT_VK},
     trees::{list_cmxs, list_nf_ranges},
 };
+use crate::trees::ensure_tree_cache;
 
 #[tauri::command]
 pub fn get_sync_height(state: State<'_, Mutex<AppState>>) -> Result<Option<u32>, String> {
@@ -40,7 +41,7 @@ pub async fn vote(
     state: State<'_, Mutex<AppState>>,
 ) -> Result<String, String> {
     let r = async {
-        let (pool, base_urls, sk, fvk, scope, domain, signature_required) = {
+        let (pool, base_urls, sk, fvk, scope, domain, signature_required, enable_tree_cache) = {
             let state = state.lock().unwrap();
             let pool = state.pool.clone();
             let base_urls = state.urls.clone();
@@ -49,14 +50,36 @@ pub async fn vote(
             let scope = state.scope;
             let domain = state.election.domain();
             let signature_required = state.election.signature_required;
-            (pool, base_urls, sk, fvk, scope, domain, signature_required)
+            (
+                pool,
+                base_urls,
+                sk,
+                fvk,
+                scope,
+                domain,
+                signature_required,
+                state.enable_tree_cache,
+            )
         };
         let rng = rand_core::OsRng;
         let vaddress = VoteAddress::decode(&address)?;
         let connection = pool.get()?;
+        if base_urls.is_empty() {
+            anyhow::bail!("No ballot server URLs configured");
+        }
+        if enable_tree_cache {
+            if let Err(e) = ensure_tree_cache(&connection, Some(&channel)) {
+                // Safety fallback: vote can continue with non-cached tree path.
+                let _ = channel.send(format!("Tree cache warm-up fallback: {e}"));
+            }
+        }
+        let _ = channel.send("Collecting note and tree inputs".to_string());
         let notes = list_notes(&connection, 0, &fvk, scope)?;
         let cmxs = list_cmxs(&connection)?;
         let nfs = list_nf_ranges(&connection)?;
+        if notes.is_empty() {
+            anyhow::bail!("No available notes to vote with");
+        }
         let ballot = orchard::vote::vote(
             domain,
             signature_required,

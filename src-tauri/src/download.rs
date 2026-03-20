@@ -10,7 +10,7 @@ use zcash_vote::{
     election::Election,
 };
 
-use crate::{db::store_ballot, state::AppState, validate::handle_ballot};
+use crate::{db::store_ballot, state::AppState, trees::mark_tree_cache_dirty, validate::handle_ballot};
 
 #[tauri::command]
 pub async fn http_get(url: String) -> Result<String, String> {
@@ -51,6 +51,7 @@ pub async fn download_reference_data(
         )
         .await?;
         store_prop(&connection, "height", &h.to_string()).unwrap();
+        mark_tree_cache_dirty(&connection)?;
         connection.execute("COMMIT", [])?;
         Ok::<_, Error>(())
     };
@@ -62,6 +63,12 @@ pub async fn sync(state: State<'_, Mutex<AppState>>, channel: Channel<String>) -
     let rep = async {
         let (base_url, pool) = {
             let s = state.lock().unwrap();
+            if s.urls.is_empty() {
+                let _ = channel.send(
+                    "No ballot server URLs configured; skipping ballot sync".to_string(),
+                );
+                return Ok::<_, Error>(());
+            }
             let index = rand::random_range(0..s.urls.len());
             (s.urls[index].clone(), s.pool.clone())
         };
@@ -78,6 +85,7 @@ pub async fn sync(state: State<'_, Mutex<AppState>>, channel: Channel<String>) -
         let election = serde_json::from_str::<Election>(&election)?;
         let c = connection.query_row("SELECT COUNT(*) FROM ballots", [], |r| r.get::<_, u32>(0))?;
         channel.send(format!("Current: {c} out of {n}"))?;
+        let mut changed = false;
         if c < n {
             for i in c..n {
                 let url = format!("{}/ballot/height/{}", base_url, i + 1);
@@ -88,7 +96,11 @@ pub async fn sync(state: State<'_, Mutex<AppState>>, channel: Channel<String>) -
                 handle_ballot(&transaction, &election, i + 1, &ballot)?;
                 store_ballot(&transaction, i + 1, &ballot)?;
                 transaction.commit()?;
+                changed = true;
             }
+        }
+        if changed {
+            mark_tree_cache_dirty(&connection)?;
         }
         channel.send("Ballot Sync completed".to_string())?;
 
