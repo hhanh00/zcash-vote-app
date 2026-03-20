@@ -8,7 +8,7 @@ import { Overview } from './Overview'
 import { Delegate } from './Delegate'
 import { Election } from './Election'
 import { History } from './History'
-import { Vote } from './Vote'
+import { VoteWizard } from './VoteWizard'
 import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 
@@ -39,7 +39,7 @@ function App() {
           <Route path='/home' element={<Election />} />
           <Route path='/overview' element={<Overview election={election!}/>} />
           <Route path='/history' element={<History election={election!} />} />
-          <Route path='/vote' element={<Vote election={election!} />} />
+          <Route path='/vote' element={<VoteWizard election={election!} />} />
           <Route path='/delegate' element={<Delegate election={election!} />} />
         </Routes>
       </div>
