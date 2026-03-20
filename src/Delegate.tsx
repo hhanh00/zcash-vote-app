@@ -1,8 +1,8 @@
-import { Channel, invoke } from "@tauri-apps/api/core";
+import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { SetElectionMessage } from "./SetElectionMessage";
-import Swal from "sweetalert2";
+import { useVoteQueue } from "./VoteQueueContext";
 import {
   Card,
   CardContent,
@@ -11,7 +11,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Spinner } from "./Spinner";
 import {
   Form,
   FormControl,
@@ -23,7 +22,6 @@ import {
 import { Button } from "./components/ui/button";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "react-router-dom";
 
 const voteSchema = z.object({
   address: z.string(),
@@ -31,10 +29,8 @@ const voteSchema = z.object({
 });
 
 export const Delegate: React.FC<ElectionProps> = ({ election }) => {
-  const navigate = useNavigate();
+  const { addJob } = useVoteQueue();
   const [address, setAddress] = useState<string | undefined>();
-  const [voting, setVoting] = useState(false);
-  const [message, setMessage] = useState<string>("");
 
   useEffect(() => {
     (async () => {
@@ -53,31 +49,13 @@ export const Delegate: React.FC<ElectionProps> = ({ election }) => {
   const { control, handleSubmit } = form;
 
   const onSubmit = (delegation: Vote) => {
-    setVoting(true);
-    (async () => {
-      try {
-        delegation.amount = Math.floor(delegation.amount * 100000);
-        const channel = new Channel<string>();
-        channel.onmessage = (m) => {
-          setMessage(m);
-        };
-        const hash: string = await invoke("vote", {channel: channel, ...delegation});
-        await Swal.fire({
-          icon: "success",
-          title: hash,
-        });
-        navigate("/overview");
-      } catch (e: any) {
-        console.log(e);
-        await Swal.fire({
-          icon: "error",
-          title: e,
-        });
-      } finally {
-        setVoting(false);
-      }
-      await invoke("sync");
-    })();
+    addJob({
+      type: "delegate",
+      address: delegation.address,
+      candidateName: delegation.address.slice(0, 16) + "...",
+      amount: delegation.amount,
+    });
+    form.reset();
   };
 
   if (election == undefined || election.id == "") return <SetElectionMessage />;
@@ -138,17 +116,11 @@ export const Delegate: React.FC<ElectionProps> = ({ election }) => {
               />
             </CardContent>
             <CardFooter>
-              <Button type="submit">Delegate</Button>
+              <Button type="submit">Queue Delegation</Button>
             </CardFooter>
           </Card>
         </form>
       </Form>
-      {voting && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div>{message}&nbsp;</div>
-        <Spinner />
-      </div>
-    )}
     </div>
   );
 };
