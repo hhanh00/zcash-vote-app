@@ -20,7 +20,7 @@ function App() {
       const e: Election = await invoke('get_election')
       setElection(e)
     })()
-  })
+  }, [])
 
   const hasElection = election != undefined && election.id != ""
 
@@ -43,7 +43,7 @@ function App() {
           <Route path='/history' element={<History election={election!} />} />
           <Route path='/vote' element={<Vote election={election!} />} />
           <Route path='/delegate' element={<Delegate election={election!} />} />
-          <Route path='/batch' element={<BatchVote />} />
+          <Route path='/batch' element={<BatchVote onElectionChange={setElection} />} />
         </Routes>
       </div>
     </Router>

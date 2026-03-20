@@ -13,8 +13,18 @@ import { Switch } from "./components/ui/switch";
 import { Spinner } from "./Spinner";
 import Swal from "sweetalert2";
 
+type BatchVoteProps = {
+  onElectionChange?: (election: Election) => void;
+};
+
 type VoteConfig = {
   url: string;
+  choice: string;
+  amount: number;
+};
+
+type ParsedVoteConfig = {
+  urls: string[];
   choice: string;
   amount: number;
 };
@@ -58,57 +68,103 @@ const EXAMPLE_CONFIG = `[
   }
 ]`;
 
-export function BatchVote() {
+function toErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
+function parseConfigs(raw: string): ParsedVoteConfig[] {
+  const parsed: unknown = JSON.parse(raw);
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new Error("JSON must be a non-empty array");
+  }
+
+  return parsed.map((entry, index) => {
+    if (typeof entry !== "object" || entry === null) {
+      throw new Error(`Entry ${index + 1} must be an object`);
+    }
+
+    const { url, choice, amount } = entry as Partial<VoteConfig>;
+    const urls =
+      typeof url === "string"
+        ? url
+            .split(",")
+            .map((value) => value.trim())
+            .filter((value) => value.length > 0)
+        : [];
+    const normalizedChoice = typeof choice === "string" ? choice.trim() : "";
+    const normalizedAmount = Number(amount);
+
+    if (urls.length === 0 || !normalizedChoice) {
+      throw new Error(`Entry ${index + 1} needs a URL and choice`);
+    }
+    if (!Number.isFinite(normalizedAmount) || normalizedAmount <= 0) {
+      throw new Error(`Entry ${index + 1} needs a positive numeric amount`);
+    }
+
+    return {
+      urls,
+      choice: normalizedChoice,
+      amount: normalizedAmount,
+    };
+  });
+}
+
+export function BatchVote({ onElectionChange }: BatchVoteProps) {
   const [key, setKey] = useState("");
   const [internal, setInternal] = useState(false);
   const [json, setJson] = useState(EXAMPLE_CONFIG);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<VoteProgress[]>([]);
 
-  const start = () => {
-    (async () => {
-      if (!key.trim()) {
-        await Swal.fire({ icon: "error", title: "Enter your seed phrase" });
-        return;
-      }
+  const start = async () => {
+    if (running) {
+      return;
+    }
 
-      let configs: VoteConfig[];
-      try {
-        configs = JSON.parse(json);
-        if (!Array.isArray(configs)) throw new Error("Must be an array");
-        for (const c of configs) {
-          if (!c.url || !c.choice || !c.amount) {
-            throw new Error(
-              "Each entry needs url, choice, and amount"
-            );
-          }
-        }
-      } catch (e: any) {
-        await Swal.fire({ icon: "error", title: "Invalid JSON", text: e.message });
-        return;
-      }
+    const batchKey = key.trim();
+    if (!batchKey) {
+      await Swal.fire({ icon: "error", title: "Enter your seed phrase" });
+      return;
+    }
 
-      const valid: boolean = await invoke("validate_key", { key });
-      if (!valid) {
-        await Swal.fire({
-          icon: "error",
-          title: "Invalid key",
-          text: "Must be a 24-word seed phrase or a unified viewing key with an Orchard receiver",
-        });
-        return;
-      }
+    let configs: ParsedVoteConfig[];
+    try {
+      configs = parseConfigs(json);
+    } catch (error: unknown) {
+      await Swal.fire({
+        icon: "error",
+        title: "Invalid JSON",
+        text: toErrorMessage(error),
+      });
+      return;
+    }
 
-      setRunning(true);
-      const items: VoteProgress[] = configs.map((_, i) => ({
-        name: `Election ${i + 1}`,
-        status: "pending" as VoteStatus,
-        message: "",
-      }));
-      setProgress([...items]);
+    const valid: boolean = await invoke("validate_key", { key: batchKey });
+    if (!valid) {
+      await Swal.fire({
+        icon: "error",
+        title: "Invalid key",
+        text: "Must be a 24-word seed phrase or a unified viewing key with an Orchard receiver",
+      });
+      return;
+    }
 
-      let doneCount = 0;
-      let errorCount = 0;
+    setRunning(true);
+    setKey("");
+    const items: VoteProgress[] = configs.map((_, i) => ({
+      name: `Election ${i + 1}`,
+      status: "pending",
+      message: "",
+    }));
+    setProgress([...items]);
 
+    let doneCount = 0;
+    let errorCount = 0;
+
+    try {
       for (let i = 0; i < configs.length; i++) {
         const config = configs[i];
         const update = (u: Partial<VoteProgress>) => {
@@ -117,17 +173,15 @@ export function BatchVote() {
         };
 
         try {
-          // 1. Fetch election data from URL
           update({ status: "loading", message: "Fetching election data..." });
-          const urls = config.url.split(",").map((u) => u.trim());
-          const url = urls[Math.floor(Math.random() * urls.length)];
+          const url = config.urls[Math.floor(Math.random() * config.urls.length)];
           const rep: string = await invoke("http_get", { url });
           const election: Election = JSON.parse(rep);
           update({ name: election.name });
 
-          // 2. Match the candidate by choice text
+          const choice = config.choice.toLowerCase();
           const candidate = election.candidates.find(
-            (c) => c.choice.toLowerCase() === config.choice.toLowerCase()
+            (c) => c.choice.trim().toLowerCase() === choice
           );
           if (!candidate) {
             const options = election.candidates.map((c) => c.choice).join(", ");
@@ -136,44 +190,40 @@ export function BatchVote() {
             );
           }
 
-          // 3. Set election in app state
           await invoke("set_election", {
-            urls: config.url,
+            urls: config.urls.join(","),
             election,
-            key,
+            key: batchKey,
             internal,
           });
+          onElectionChange?.(election);
 
-          // 4. Create a fresh temp DB
           const tmpPath: string = await invoke("get_temp_path", {
             name: election.name,
           });
-          await invoke("save_db", { path: tmpPath });
+          await invoke("replace_db", { path: tmpPath });
 
-          // 5. Download reference data (blocks)
           update({
             status: "downloading",
             message: "Downloading blocks...",
           });
           const dlChannel = new Channel<number>();
-          dlChannel.onmessage = (h) => {
-            update({ message: `Downloading... block ${h}` });
+          dlChannel.onmessage = (height) => {
+            update({ message: `Downloading... block ${height}` });
           };
           await invoke("download_reference_data", { channel: dlChannel });
 
-          // 6. Sync ballots from other voters
           update({ status: "syncing", message: "Syncing ballots..." });
           const syncChannel = new Channel<string>();
-          syncChannel.onmessage = (m) => {
-            update({ message: m });
+          syncChannel.onmessage = (message) => {
+            update({ message });
           };
           await invoke("sync", { channel: syncChannel });
 
-          // 7. Build ZK proof and submit vote
           update({ status: "proving", message: "Building ZK proof..." });
           const voteChannel = new Channel<string>();
-          voteChannel.onmessage = (m) => {
-            update({ message: m });
+          voteChannel.onmessage = (message) => {
+            update({ message });
           };
           const amount = Math.floor(config.amount * 100000);
           const hash: string = await invoke("vote", {
@@ -184,27 +234,27 @@ export function BatchVote() {
 
           update({ status: "done", message: "Vote submitted", hash });
           doneCount++;
-        } catch (e: any) {
-          update({ status: "error", message: String(e) });
+        } catch (error: unknown) {
+          update({ status: "error", message: toErrorMessage(error) });
           errorCount++;
         }
       }
-
+    } finally {
       setRunning(false);
+    }
 
-      if (errorCount === 0) {
-        await Swal.fire({
-          icon: "success",
-          title: `All ${doneCount} votes submitted`,
-        });
-      } else {
-        await Swal.fire({
-          icon: "warning",
-          title: `${doneCount} submitted, ${errorCount} failed`,
-          text: "Check the progress log for details",
-        });
-      }
-    })();
+    if (errorCount === 0) {
+      await Swal.fire({
+        icon: "success",
+        title: `All ${doneCount} votes submitted`,
+      });
+    } else {
+      await Swal.fire({
+        icon: "warning",
+        title: `${doneCount} submitted, ${errorCount} failed`,
+        text: "Check the progress log for details",
+      });
+    }
   };
 
   return (

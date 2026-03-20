@@ -25,6 +25,13 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
 
+function toErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
 const voteSchema = z.object({
   address: z.string(),
   amount: z.coerce.number().int(),
@@ -67,11 +74,11 @@ export const Delegate: React.FC<ElectionProps> = ({ election }) => {
           title: hash,
         });
         navigate("/overview");
-      } catch (e: any) {
-        console.log(e);
+      } catch (error: unknown) {
+        console.log(error);
         await Swal.fire({
           icon: "error",
-          title: e,
+          title: toErrorMessage(error),
         });
       } finally {
         setVoting(false);

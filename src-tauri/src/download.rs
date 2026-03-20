@@ -5,9 +5,8 @@ use orchard::vote::Ballot;
 use rusqlite::OptionalExtension;
 use tauri::{ipc::Channel, State};
 use zcash_vote::{
-    db::{load_prop, store_prop},
+    db::store_prop,
     decrypt::to_fvk,
-    election::Election,
 };
 
 use crate::{db::store_ballot, state::AppState, validate::handle_ballot};
@@ -60,10 +59,20 @@ pub async fn download_reference_data(
 #[tauri::command]
 pub async fn sync(state: State<'_, Mutex<AppState>>, channel: Channel<String>) -> Result<(), String> {
     let rep = async {
-        let (base_url, pool) = {
+        let (base_url, pool, election, fvk, scope) = {
             let s = state.lock().unwrap();
+            if s.urls.is_empty() {
+                anyhow::bail!("No ballot server URLs configured");
+            }
             let index = rand::random_range(0..s.urls.len());
-            (s.urls[index].clone(), s.pool.clone())
+            let fvk = to_fvk(&s.key)?;
+            (
+                s.urls[index].clone(),
+                s.pool.clone(),
+                s.election.clone(),
+                fvk,
+                s.scope,
+            )
         };
         let connection = pool.get()?;
         let r = connection.query_row("SELECT 1 FROM cmxs", [], |_| Ok(())).optional()?;
@@ -74,8 +83,6 @@ pub async fn sync(state: State<'_, Mutex<AppState>>, channel: Channel<String>) -
         let n = reqwest::get(url).await?.text().await?;
         let n = n.parse::<u32>()?;
         channel.send(format!("Total number of ballots: {n}"))?;
-        let election = load_prop(&connection, "election")?.unwrap();
-        let election = serde_json::from_str::<Election>(&election)?;
         let c = connection.query_row("SELECT COUNT(*) FROM ballots", [], |r| r.get::<_, u32>(0))?;
         channel.send(format!("Current: {c} out of {n}"))?;
         if c < n {
@@ -85,7 +92,7 @@ pub async fn sync(state: State<'_, Mutex<AppState>>, channel: Channel<String>) -
                 let ballot = serde_json::from_str::<Ballot>(&ballot)?;
                 let mut connection = pool.get()?;
                 let transaction = connection.transaction()?;
-                handle_ballot(&transaction, &election, i + 1, &ballot)?;
+                handle_ballot(&transaction, &election, i + 1, &ballot, &fvk, scope)?;
                 store_ballot(&transaction, i + 1, &ballot)?;
                 transaction.commit()?;
             }
