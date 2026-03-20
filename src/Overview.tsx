@@ -21,6 +21,13 @@ import { Alert, AlertDescription, AlertTitle } from "./components/ui/alert";
 import Swal from "sweetalert2";
 import { Spinner } from "./Spinner";
 
+function toErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
 export const Overview: React.FC<ElectionProps> = ({ election }) => {
   const [height, setHeight] = useState<number | null | undefined>();
   const [message, setMessage] = useState<string | null | undefined>();
@@ -29,6 +36,10 @@ export const Overview: React.FC<ElectionProps> = ({ election }) => {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    if (election == undefined || election.id === "") {
+      return;
+    }
+
     (async () => {
       try {
         setBusy(true);
@@ -38,6 +49,7 @@ export const Overview: React.FC<ElectionProps> = ({ election }) => {
         };
         await invoke("sync", { channel: syncChannel });
       } catch {
+        // Initial sync is best-effort.
       } finally {
         setBusy(false);
       }
@@ -48,12 +60,10 @@ export const Overview: React.FC<ElectionProps> = ({ election }) => {
       const balance: number = await invoke("get_available_balance", {});
       setBalance(balance / 100000);
 
-      const id: string = await invoke("get_election_id", {
-        election: election,
-      });
+      const id: string = await invoke("get_election_id", {});
       setId(id);
     })();
-  }, []);
+  }, [election]);
 
   const download = () => {
     (async () => {
@@ -70,11 +80,11 @@ export const Overview: React.FC<ElectionProps> = ({ election }) => {
         await invoke("sync", { channel: syncChannel });
         const balance: number = await invoke("get_available_balance", {});
         setBalance(balance / 100000);
-      } catch (e: any) {
+      } catch (error: unknown) {
         await invoke("reset");
         await Swal.fire({
           icon: "error",
-          title: e,
+          title: toErrorMessage(error),
         });
       }
     })();
