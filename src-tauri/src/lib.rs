@@ -34,6 +34,7 @@ pub fn run() {
             state::set_election,
             state::get_election,
             state::get_election_id,
+            state::get_temp_path,
             state::save_db,
             state::open_db,
             address::get_address,

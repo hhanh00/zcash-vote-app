@@ -107,3 +107,15 @@ pub fn get_election_id(state: State<Mutex<AppState>>) -> String {
     let s = state.lock().unwrap();
     s.election.id()
 }
+
+#[tauri::command]
+pub fn get_temp_path(name: String) -> String {
+    let safe: String = name
+        .chars()
+        .map(|c| if c.is_alphanumeric() || c == '-' { c } else { '_' })
+        .collect();
+    std::env::temp_dir()
+        .join(format!("zcash-vote-batch-{safe}.db"))
+        .to_string_lossy()
+        .to_string()
+}
