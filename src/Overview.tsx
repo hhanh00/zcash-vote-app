@@ -29,6 +29,9 @@ export const Overview: React.FC<ElectionProps> = ({ election }) => {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    if (election == undefined || election.id === "") {
+      return;
+    }
     (async () => {
       try {
         setBusy(true);
@@ -53,7 +56,7 @@ export const Overview: React.FC<ElectionProps> = ({ election }) => {
       });
       setId(id);
     })();
-  }, []);
+  }, [election?.id]);
 
   const download = () => {
     (async () => {

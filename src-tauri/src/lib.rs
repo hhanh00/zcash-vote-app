@@ -47,6 +47,7 @@ pub fn run() {
             vote::vote,
             vote::fetch_votes,
             trees::compute_roots,
+            trees::warmup_tree_cache,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

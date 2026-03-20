@@ -19,7 +19,7 @@ function App() {
       const e: Election = await invoke('get_election')
       setElection(e)
     })()
-  })
+  }, [])
 
   const hasElection = election != undefined && election.id != ""
 
