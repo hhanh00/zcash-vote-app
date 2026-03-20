@@ -17,6 +17,7 @@ macro_rules! tauri_export {
 pub mod address;
 pub mod db;
 pub mod download;
+pub mod pir;
 #[path = "cash.z.wallet.sdk.rpc.rs"]
 pub mod rpc;
 pub mod state;

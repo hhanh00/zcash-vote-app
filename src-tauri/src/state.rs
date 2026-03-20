@@ -18,6 +18,8 @@ pub struct AppState {
     pub key: String,
     #[zeroize(skip)] pub scope: Scope,
     #[zeroize(skip)] pub pool: r2d2::Pool<SqliteConnectionManager>,
+    #[zeroize(skip)] pub enable_pir_nullifier_check: bool,
+    #[zeroize(skip)] pub pir_base_url: Option<String>,
 }
 
 impl Default for AppState {
@@ -28,6 +30,10 @@ impl Default for AppState {
             key: Default::default(),
             scope: Scope::External,
             pool: Pool::new(SqliteConnectionManager::memory()).unwrap(),
+            enable_pir_nullifier_check: std::env::var("ZV_ENABLE_PIR_NULLIFIER_CHECK")
+                .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+                .unwrap_or(false),
+            pir_base_url: std::env::var("ZV_PIR_BASE_URL").ok(),
         }
     }
 }

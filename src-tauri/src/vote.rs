@@ -11,6 +11,7 @@ use zcash_vote::{
     election::{BALLOT_PK, BALLOT_VK},
     trees::{list_cmxs, list_nf_ranges},
 };
+use crate::pir::validate_unspent_notes_with_pir;
 
 #[tauri::command]
 pub fn get_sync_height(state: State<'_, Mutex<AppState>>) -> Result<Option<u32>, String> {
@@ -40,7 +41,17 @@ pub async fn vote(
     state: State<'_, Mutex<AppState>>,
 ) -> Result<String, String> {
     let r = async {
-        let (pool, base_urls, sk, fvk, scope, domain, signature_required) = {
+        let (
+            pool,
+            base_urls,
+            sk,
+            fvk,
+            scope,
+            domain,
+            signature_required,
+            enable_pir_nullifier_check,
+            pir_base_url,
+        ) = {
             let state = state.lock().unwrap();
             let pool = state.pool.clone();
             let base_urls = state.urls.clone();
@@ -49,11 +60,28 @@ pub async fn vote(
             let scope = state.scope;
             let domain = state.election.domain();
             let signature_required = state.election.signature_required;
-            (pool, base_urls, sk, fvk, scope, domain, signature_required)
+            (
+                pool,
+                base_urls,
+                sk,
+                fvk,
+                scope,
+                domain,
+                signature_required,
+                state.enable_pir_nullifier_check,
+                state.pir_base_url.clone(),
+            )
         };
         let rng = rand_core::OsRng;
         let vaddress = VoteAddress::decode(&address)?;
         let connection = pool.get()?;
+        if enable_pir_nullifier_check {
+            let base_url = pir_base_url
+                .as_ref()
+                .ok_or(anyhow::anyhow!("PIR check enabled but ZV_PIR_BASE_URL is not set"))?;
+            let _ = channel.send("Checking nullifiers via PIR service".to_string());
+            validate_unspent_notes_with_pir(&connection, base_url).await?;
+        }
         let notes = list_notes(&connection, 0, &fvk, scope)?;
         let cmxs = list_cmxs(&connection)?;
         let nfs = list_nf_ranges(&connection)?;
