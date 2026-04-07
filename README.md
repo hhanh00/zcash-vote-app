@@ -1,3 +1,10 @@
+# DEPRECATION NOTICE
+
+This app is no longer used for voting.
+
+Coin Voting uses the [ZCV repo](https://github.com/hhanh00/zcv)
+and is integrated into [Zkool](https://github.com/hhanh00/zkool2)
+
 # Build
 
 ## Ubuntu
