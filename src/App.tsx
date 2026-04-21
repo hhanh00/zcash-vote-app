@@ -9,6 +9,7 @@ import { Delegate } from './Delegate'
 import { Election } from './Election'
 import { History } from './History'
 import { Vote } from './Vote'
+import { BatchVote } from './BatchVote'
 import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 
@@ -19,7 +20,7 @@ function App() {
       const e: Election = await invoke('get_election')
       setElection(e)
     })()
-  })
+  }, [])
 
   const hasElection = election != undefined && election.id != ""
 
@@ -31,6 +32,7 @@ function App() {
       {hasElection && <a href='/history'>History</a>}
       {hasElection && <a href='/vote'>Vote</a>}
       {hasElection && <a href='/delegate'>Delegate</a>}
+      <a href='/batch'>Batch</a>
     </nav>
     <Router>
       <div className='pt-16 mx-auto flex flex-col min-h-screen'>
@@ -41,6 +43,7 @@ function App() {
           <Route path='/history' element={<History election={election!} />} />
           <Route path='/vote' element={<Vote election={election!} />} />
           <Route path='/delegate' element={<Delegate election={election!} />} />
+          <Route path='/batch' element={<BatchVote onElectionChange={setElection} />} />
         </Routes>
       </div>
     </Router>

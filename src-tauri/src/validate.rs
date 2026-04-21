@@ -1,5 +1,8 @@
 use anyhow::{Error, Result};
-use orchard::{keys::{PreparedIncomingViewingKey, Scope}, vote::{try_decrypt_ballot, Ballot}};
+use orchard::{
+    keys::{FullViewingKey, PreparedIncomingViewingKey, Scope},
+    vote::{try_decrypt_ballot, Ballot},
+};
 use rusqlite::Connection;
 use std::sync::Mutex;
 
@@ -7,8 +10,7 @@ use bip0039::Mnemonic;
 use tauri::State;
 use zcash_address::unified::Encoding;
 use zcash_vote::{
-    db::{load_prop, store_cmx, store_note},
-    decrypt::to_fvk,
+    db::{store_cmx, store_note},
     election::{Election, BALLOT_VK},
 };
 
@@ -40,10 +42,10 @@ pub fn handle_ballot(
     election: &Election,
     height: u32,
     ballot: &Ballot,
+    fvk: &FullViewingKey,
+    scope: Scope,
 ) -> Result<()> {
-    let key = load_prop(connection, "key")?.ok_or(anyhow::anyhow!("no key"))?;
-    let fvk = to_fvk(&key)?;
-    let pivk = PreparedIncomingViewingKey::new(&fvk.to_ivk(Scope::External));
+    let pivk = PreparedIncomingViewingKey::new(&fvk.to_ivk(scope));
 
     let position = connection.query_row("SELECT COUNT(*) FROM cmxs", [], |r| r.get::<_, u32>(0))?;
     let txid = ballot.data.sighash()?;
