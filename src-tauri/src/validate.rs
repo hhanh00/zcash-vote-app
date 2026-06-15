@@ -12,7 +12,7 @@ use zcash_vote::{
     election::{Election, BALLOT_VK},
 };
 
-use crate::{db::mark_spent, state::AppState};
+use crate::{db::mark_spent, state::AppState, trees::mark_tree_cache_dirty};
 
 #[tauri::command]
 pub fn validate_key(key: String) -> bool {
@@ -64,5 +64,6 @@ pub fn handle_ballot(
         }
         store_cmx(connection, 0, &action.cmx)?;
     }
+    mark_tree_cache_dirty(connection)?;
     Ok(())
 }
